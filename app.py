@@ -68,37 +68,6 @@ def age_in_years(dob: Optional[date]) -> Optional[float]:
     return round((today - dob).days / 365.25, 2)
 
 
-def parse_date_str(value: str) -> Optional[date]:
-    value = (value or "").strip()
-    if not value:
-        return None
-    for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d"):
-        try:
-            return datetime.strptime(value, fmt).date()
-        except ValueError:
-            continue
-    return None
-
-
-def age_humanized(dob: Optional[date]) -> str:
-    if not dob:
-        return ""
-    today = date.today()
-    years = today.year - dob.year
-    months = today.month - dob.month
-    if today.day < dob.day:
-        months -= 1
-    if months < 0:
-        years -= 1
-        months += 12
-    parts = []
-    if years > 0:
-        parts.append(f"{years} año" if years == 1 else f"{years} años")
-    if months > 0 or not parts:
-        parts.append(f"{months} mes" if months == 1 else f"{months} meses")
-    return " y ".join(parts)
-
-
 def ensure_session_defaults() -> None:
     defaults = {
         "include_post": False,
@@ -332,7 +301,6 @@ def make_pdf(
     styles.add(ParagraphStyle(name="Small", fontSize=8.5, leading=10, alignment=TA_LEFT))
     styles.add(ParagraphStyle(name="CenterTitle", fontSize=13, leading=15, alignment=TA_CENTER, spaceAfter=8))
     styles.add(ParagraphStyle(name="Section", fontSize=10.5, leading=12, textColor=colors.HexColor("#1F4E79"), spaceBefore=6, spaceAfter=4))
-    styles.add(ParagraphStyle(name="Justify", fontSize=8.6, leading=11, alignment=4))
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -426,11 +394,12 @@ def make_pdf(
 
     story.append(Paragraph("4. Interpretación", styles["Section"]))
     interp_rows = [
-        ["Reporte técnico", interpretation["technical_report"]],
-        ["Resultado", interpretation["pattern"]],
+        ["Patrón", interpretation["pattern"]],
         ["Severidad", interpretation["severity"]],
         ["Respuesta broncodilatadora", interpretation["bronchodilator"]],
-        ["Comentario médico", Paragraph(interpretation["medical_comment"], styles["Justify"])],
+        ["Reporte técnico", interpretation["technical_report"]],
+        ["Resultado", interpretation["pattern"]],
+        ["Comentario médico", Paragraph(interpretation["medical_comment"], styles["Small"])],
     ]
     t3 = Table(interp_rows, colWidths=[4.5 * cm, 13.8 * cm])
     t3.setStyle(TableStyle([
@@ -458,10 +427,8 @@ def make_pdf(
             story.append(render_image_to_rl(image2))
             story.append(Spacer(1, 0.15 * cm))
 
-    story.append(Spacer(1, 0.45 * cm))
-    footer = Table([[Paragraph("<b>Dr. Andrés López Ruiz</b><br/>Médico Pediatra<br/>RETHUS: 1082877373", styles["Small"]) ]], colWidths=[18.0 * cm])
-    footer.setStyle(TableStyle([("LINEABOVE", (0, 0), (-1, 0), 0.5, colors.grey), ("TOPPADDING", (0, 0), (-1, 0), 6)]))
-    story.append(footer)
+    story.append(Spacer(1, 0.4 * cm))
+    story.append(Paragraph("Documento generado para impresión y archivo clínico. La firma y sello pueden adicionarse al momento de la entrega.", styles["Small"]))
 
     doc.build(story)
     main_pdf = buffer.getvalue()
@@ -520,10 +487,7 @@ with st.form("spirometry_form"):
     eps = c3.text_input("EPS")
 
     c4, c5, c6 = st.columns(3)
-    fecha_nacimiento_str = c4.text_input("Fecha de nacimiento (DD/MM/AAAA)", placeholder="Ej. 05/08/2023")
-    fecha_nacimiento = parse_date_str(fecha_nacimiento_str)
-    edad_calculada = age_humanized(fecha_nacimiento)
-    c4.caption(f"Edad calculada: {edad_calculada}" if edad_calculada else "Ingrese la fecha en formato DD/MM/AAAA")
+    fecha_nacimiento = c4.date_input("Fecha de nacimiento", value=None)
     sexo = c5.selectbox("Sexo", ["", "Femenino", "Masculino", "Otro"])
     remitente = c6.text_input("Médico remitente")
 
@@ -608,7 +572,7 @@ with st.form("spirometry_form"):
 
 if submitted:
     edad_num = age_in_years(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else None
-    edad_txt = age_humanized(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else ""
+    edad_txt = f"{edad_num:.2f} años" if edad_num is not None else ""
 
     params = {
         name: ParameterResult(
@@ -666,7 +630,8 @@ if submitted:
     tab1, tab2, tab3 = st.tabs(["Reporte técnico", "Interpretación médica", "Datos tabulados"])
     with tab1:
         st.markdown("### Texto sugerido para el reporte")
-        st.write(interpretation["technical_report"])
+        st.write(f"**Reporte técnico:** {interpretation['technical_report']}")
+        st.write(f"**Resultado:** {interpretation['pattern']}")
         if curve_image_1:
             st.image(curve_image_1, caption="Curva flujo-volumen")
         if curve_image_2:
