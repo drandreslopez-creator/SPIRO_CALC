@@ -23,7 +23,6 @@ from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
     Image as RLImage,
-    KeepTogether,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -67,37 +66,6 @@ def age_in_years(dob: Optional[date]) -> Optional[float]:
         return None
     today = date.today()
     return round((today - dob).days / 365.25, 2)
-
-
-def parse_date_str(value: str) -> Optional[date]:
-    value = (value or "").strip()
-    if not value:
-        return None
-    for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d"):
-        try:
-            return datetime.strptime(value, fmt).date()
-        except ValueError:
-            continue
-    return None
-
-
-def age_humanized(dob: Optional[date]) -> str:
-    if not dob:
-        return ""
-    today = date.today()
-    years = today.year - dob.year
-    months = today.month - dob.month
-    if today.day < dob.day:
-        months -= 1
-    if months < 0:
-        years -= 1
-        months += 12
-    parts = []
-    if years > 0:
-        parts.append(f"{years} año" if years == 1 else f"{years} años")
-    if months > 0 or not parts:
-        parts.append(f"{months} mes" if months == 1 else f"{months} meses")
-    return " y ".join(parts)
 
 
 def ensure_session_defaults() -> None:
@@ -247,11 +215,6 @@ def build_interpretation(age_years: Optional[float], params: Dict[str, Parameter
         broncho_status, broncho_note = bronchodilator_response(fev1, fvc, age_years)
 
     technical_lines = [quality_text.strip()] if quality_text.strip() else []
-    technical_lines.append(pattern)
-    if severity != "No aplica":
-        technical_lines.append(f"Severidad funcional: {severity}.")
-    if broncho_status != "No realizado":
-        technical_lines.append(f"Respuesta broncodilatadora: {broncho_status.lower()}.")
 
     technical_report = " ".join(technical_lines)
     medical_comment = " ".join(comments + [broncho_note])
@@ -276,7 +239,7 @@ def build_summary_chart(params: Dict[str, ParameterResult]) -> io.BytesIO:
     x = np.arange(len(labels))
     width = 0.36
 
-    fig, ax = plt.subplots(figsize=(6.2, 3.4))
+    fig, ax = plt.subplots(figsize=(8, 4))
     pre_vals = [0 if v is None else v for v in pre]
     post_vals = [0 if v is None else v for v in post]
     ax.bar(x - width / 2, pre_vals, width, label="Pre")
@@ -297,7 +260,7 @@ def build_summary_chart(params: Dict[str, ParameterResult]) -> io.BytesIO:
     return buffer
 
 
-def render_image_to_rl(uploaded_file, max_width_cm: float = 7.8) -> RLImage:
+def render_image_to_rl(uploaded_file, max_width_cm: float = 17.0) -> RLImage:
     img = Image.open(uploaded_file)
     width, height = img.size
     aspect = height / width if width else 1
@@ -340,7 +303,6 @@ def make_pdf(
     styles.add(ParagraphStyle(name="Small", fontSize=8.5, leading=10, alignment=TA_LEFT))
     styles.add(ParagraphStyle(name="CenterTitle", fontSize=13, leading=15, alignment=TA_CENTER, spaceAfter=8))
     styles.add(ParagraphStyle(name="Section", fontSize=10.5, leading=12, textColor=colors.HexColor("#1F4E79"), spaceBefore=6, spaceAfter=4))
-    styles.add(ParagraphStyle(name="Justify", fontSize=8.6, leading=11, alignment=4))
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -385,7 +347,7 @@ def make_pdf(
         ["Sexo", patient.get("sexo", ""), "EPS", patient.get("eps", "")],
         ["Peso", patient.get("peso", ""), "Talla", patient.get("talla", "")],
         ["Médico remitente", patient.get("remitente", ""), "Fecha del estudio", study.get("fecha_estudio", "")],
-        ["Indicación clínica", study.get("indicacion", ""), "IDx", study.get("diagnostico", "")],
+        ["Indicación clínica", study.get("indicacion", ""), "Diagnóstico / sospecha", study.get("diagnostico", "")],
     ]
     story.append(Paragraph("1. Identificación del paciente", styles["Section"]))
     t = Table(patient_rows, colWidths=[3.2 * cm, 6.1 * cm, 3.0 * cm, 6.0 * cm])
@@ -434,11 +396,11 @@ def make_pdf(
 
     story.append(Paragraph("4. Interpretación", styles["Section"]))
     interp_rows = [
-        ["Reporte técnico", interpretation["technical_report"]],
-        ["Resultado", interpretation["pattern"]],
+        ["Patrón", interpretation["pattern"]],
         ["Severidad", interpretation["severity"]],
         ["Respuesta broncodilatadora", interpretation["bronchodilator"]],
-        ["Comentario médico", Paragraph(interpretation["medical_comment"], styles["Justify"])],
+        ["Reporte técnico", interpretation["technical_report"]],
+        ["Comentario médico", interpretation["medical_comment"]],
     ]
     t3 = Table(interp_rows, colWidths=[4.5 * cm, 13.8 * cm])
     t3.setStyle(TableStyle([
@@ -449,56 +411,25 @@ def make_pdf(
     ]))
     story.append(t3)
 
+    story.append(Paragraph("5. Resumen gráfico", styles["Section"]))
     chart_buffer = build_summary_chart(params)
-    story.append(PageBreak())
-    story.append(KeepTogether([
-        Paragraph("5. Resumen gráfico", styles["Section"]),
-        RLImage(chart_buffer, width=12.5 * cm, height=6.9 * cm),
-    ]))
+    story.append(RLImage(chart_buffer, width=16.5 * cm, height=8.25 * cm))
 
     image1 = attachments.get("curve_image_1")
     image2 = attachments.get("curve_image_2")
     if image1 or image2:
-        story.append(Spacer(1, 0.15 * cm))
         story.append(Paragraph("6. Curvas / soporte gráfico", styles["Section"]))
-        curve_items = []
         if image1:
-            curve_items.extend([Paragraph("Curva flujo-volumen", styles["Small"]), render_image_to_rl(image1, max_width_cm=7.8)])
-        if image2:
-            curve_items.extend([Paragraph("Curva volumen-tiempo", styles["Small"]), render_image_to_rl(image2, max_width_cm=7.8)])
-        if image1 and image2:
-            curve_table = Table([[curve_items[1], curve_items[3]]], colWidths=[8.4 * cm, 8.4 * cm])
-            curve_table.setStyle(TableStyle([
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ]))
-            label_table = Table([[curve_items[0], curve_items[2]]], colWidths=[8.4 * cm, 8.4 * cm])
-            label_table.setStyle(TableStyle([
-                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ]))
-            story.append(label_table)
-            story.append(curve_table)
+            story.append(Paragraph("Curva flujo-volumen", styles["Small"]))
+            story.append(render_image_to_rl(image1))
             story.append(Spacer(1, 0.15 * cm))
-        else:
-            if image1:
-                story.append(curve_items[0])
-                story.append(curve_items[1])
-                story.append(Spacer(1, 0.15 * cm))
-            if image2:
-                idx = 2 if image1 else 0
-                story.append(curve_items[idx])
-                story.append(curve_items[idx + 1])
-                story.append(Spacer(1, 0.15 * cm))
+        if image2:
+            story.append(Paragraph("Curva volumen-tiempo", styles["Small"]))
+            story.append(render_image_to_rl(image2))
+            story.append(Spacer(1, 0.15 * cm))
 
-    story.append(Spacer(1, 0.45 * cm))
-    footer = Table([[Paragraph("<b>Dr. Andrés López Ruiz</b><br/>Médico Pediatra<br/>RETHUS: 1082877373", styles["Small"]) ]], colWidths=[18.0 * cm])
-    footer.setStyle(TableStyle([("LINEABOVE", (0, 0), (-1, 0), 0.5, colors.grey), ("TOPPADDING", (0, 0), (-1, 0), 6)]))
-    story.append(footer)
+    story.append(Spacer(1, 0.4 * cm))
+    story.append(Paragraph("Documento generado para impresión y archivo clínico. La firma y sello pueden adicionarse al momento de la entrega.", styles["Small"]))
 
     doc.build(story)
     main_pdf = buffer.getvalue()
@@ -557,10 +488,7 @@ with st.form("spirometry_form"):
     eps = c3.text_input("EPS")
 
     c4, c5, c6 = st.columns(3)
-    fecha_nacimiento_str = c4.text_input("Fecha de nacimiento (DD/MM/AAAA)", placeholder="Ej. 05/08/2023")
-    fecha_nacimiento = parse_date_str(fecha_nacimiento_str)
-    edad_calculada = age_humanized(fecha_nacimiento)
-    c4.caption(f"Edad calculada: {edad_calculada}" if edad_calculada else "Ingrese la fecha en formato DD/MM/AAAA")
+    fecha_nacimiento = c4.date_input("Fecha de nacimiento", value=None)
     sexo = c5.selectbox("Sexo", ["", "Femenino", "Masculino", "Otro"])
     remitente = c6.text_input("Médico remitente")
 
@@ -573,7 +501,7 @@ with st.form("spirometry_form"):
     st.subheader("Datos clínicos y técnicos")
     d1, d2 = st.columns(2)
     indicacion = d1.text_area("Indicación clínica", placeholder="Ej. Asma en seguimiento, tos crónica, sospecha de alteración funcional respiratoria")
-    diagnostico = d2.text_area("IDx", placeholder="Ej. Asma persistente, rinitis y tos de esfuerzo")
+    diagnostico = d2.text_area("Diagnóstico / sospecha", placeholder="Ej. Asma persistente, rinitis y tos de esfuerzo")
 
     d3, d4, d5, d6 = st.columns(4)
     tipo_estudio = d3.selectbox("Tipo de estudio", ["Espirometría simple", "Espirometría pre y post broncodilatador"])
@@ -645,7 +573,7 @@ with st.form("spirometry_form"):
 
 if submitted:
     edad_num = age_in_years(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else None
-    edad_txt = age_humanized(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else ""
+    edad_txt = f"{edad_num:.2f} años" if edad_num is not None else ""
 
     params = {
         name: ParameterResult(
