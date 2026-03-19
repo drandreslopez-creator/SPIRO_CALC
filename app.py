@@ -214,9 +214,14 @@ def build_interpretation(age_years: Optional[float], params: Dict[str, Parameter
     if fev1.measured_post is not None or fvc.measured_post is not None:
         broncho_status, broncho_note = bronchodilator_response(fev1, fvc, age_years)
 
-    technical_lines = [quality_text.strip()] if quality_text.strip() else []
+    quality_only = (quality_text or "").strip()
+    for marker in ["Espirometría", "Patrón ventilatorio", "Patrón restrictivo", "Patrón obstructivo"]:
+        if marker in quality_only:
+            quality_only = quality_only.split(marker)[0].strip()
+    if quality_only and not quality_only.endswith("."):
+        quality_only += "."
 
-    technical_report = " ".join(technical_lines)
+    technical_report = quality_only
     medical_comment = " ".join(comments + [broncho_note])
 
     return {
