@@ -367,7 +367,8 @@ def make_pdf(
         story.append(Spacer(1, 0.25 * cm))
 
     story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["CenterTitle"]))
-    story.append(Paragraph(f"Fecha de generación: {datetime.now().strftime('%d/%m/%Y %H:%M')}", styles["Small"]))
+    bogota_now = datetime.now(ZoneInfo("America/Bogota"))
+    story.append(Paragraph(f"Fecha de generación: {bogota_now.strftime('%d/%m/%Y %H:%M')}", styles["Small"]))
     story.append(Spacer(1, 0.15 * cm))
 
     patient_rows = [
@@ -425,7 +426,6 @@ def make_pdf(
 
     story.append(Paragraph("4. Interpretación", styles["Section"]))
     interp_rows = [
-        ["Resultado", Paragraph(interpretation["result"], styles["Small"])],
         ["Severidad", interpretation["severity"]],
         ["Respuesta broncodilatadora", interpretation["bronchodilator"]],
         ["Reporte técnico", Paragraph(interpretation["technical_report"], styles["Small"])],
