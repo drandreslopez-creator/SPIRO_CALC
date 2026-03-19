@@ -23,6 +23,7 @@ from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
     Image as RLImage,
+    KeepTogether,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -245,7 +246,14 @@ def build_interpretation(age_years: Optional[float], params: Dict[str, Parameter
     if fev1.measured_post is not None or fvc.measured_post is not None:
         broncho_status, broncho_note = bronchodilator_response(fev1, fvc, age_years)
 
-    technical_report = quality_text.strip()
+    technical_lines = [quality_text.strip()] if quality_text.strip() else []
+    technical_lines.append(pattern)
+    if severity != "No aplica":
+        technical_lines.append(f"Severidad funcional: {severity}.")
+    if broncho_status != "No realizado":
+        technical_lines.append(f"Respuesta broncodilatadora: {broncho_status.lower()}.")
+
+    technical_report = " ".join(technical_lines)
     medical_comment = " ".join(comments + [broncho_note])
 
     return {
@@ -268,7 +276,7 @@ def build_summary_chart(params: Dict[str, ParameterResult]) -> io.BytesIO:
     x = np.arange(len(labels))
     width = 0.36
 
-    fig, ax = plt.subplots(figsize=(8, 4))
+    fig, ax = plt.subplots(figsize=(6.2, 3.4))
     pre_vals = [0 if v is None else v for v in pre]
     post_vals = [0 if v is None else v for v in post]
     ax.bar(x - width / 2, pre_vals, width, label="Pre")
@@ -289,7 +297,7 @@ def build_summary_chart(params: Dict[str, ParameterResult]) -> io.BytesIO:
     return buffer
 
 
-def render_image_to_rl(uploaded_file, max_width_cm: float = 17.0) -> RLImage:
+def render_image_to_rl(uploaded_file, max_width_cm: float = 7.8) -> RLImage:
     img = Image.open(uploaded_file)
     width, height = img.size
     aspect = height / width if width else 1
@@ -441,22 +449,51 @@ def make_pdf(
     ]))
     story.append(t3)
 
-    story.append(Paragraph("5. Resumen gráfico", styles["Section"]))
     chart_buffer = build_summary_chart(params)
-    story.append(RLImage(chart_buffer, width=16.5 * cm, height=8.25 * cm))
+    story.append(PageBreak())
+    story.append(KeepTogether([
+        Paragraph("5. Resumen gráfico", styles["Section"]),
+        RLImage(chart_buffer, width=12.5 * cm, height=6.9 * cm),
+    ]))
 
     image1 = attachments.get("curve_image_1")
     image2 = attachments.get("curve_image_2")
     if image1 or image2:
+        story.append(Spacer(1, 0.15 * cm))
         story.append(Paragraph("6. Curvas / soporte gráfico", styles["Section"]))
+        curve_items = []
         if image1:
-            story.append(Paragraph("Curva flujo-volumen", styles["Small"]))
-            story.append(render_image_to_rl(image1))
-            story.append(Spacer(1, 0.15 * cm))
+            curve_items.extend([Paragraph("Curva flujo-volumen", styles["Small"]), render_image_to_rl(image1, max_width_cm=7.8)])
         if image2:
-            story.append(Paragraph("Curva volumen-tiempo", styles["Small"]))
-            story.append(render_image_to_rl(image2))
+            curve_items.extend([Paragraph("Curva volumen-tiempo", styles["Small"]), render_image_to_rl(image2, max_width_cm=7.8)])
+        if image1 and image2:
+            curve_table = Table([[curve_items[1], curve_items[3]]], colWidths=[8.4 * cm, 8.4 * cm])
+            curve_table.setStyle(TableStyle([
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ]))
+            label_table = Table([[curve_items[0], curve_items[2]]], colWidths=[8.4 * cm, 8.4 * cm])
+            label_table.setStyle(TableStyle([
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]))
+            story.append(label_table)
+            story.append(curve_table)
             story.append(Spacer(1, 0.15 * cm))
+        else:
+            if image1:
+                story.append(curve_items[0])
+                story.append(curve_items[1])
+                story.append(Spacer(1, 0.15 * cm))
+            if image2:
+                idx = 2 if image1 else 0
+                story.append(curve_items[idx])
+                story.append(curve_items[idx + 1])
+                story.append(Spacer(1, 0.15 * cm))
 
     story.append(Spacer(1, 0.45 * cm))
     footer = Table([[Paragraph("<b>Dr. Andrés López Ruiz</b><br/>Médico Pediatra<br/>RETHUS: 1082877373", styles["Small"]) ]], colWidths=[18.0 * cm])
