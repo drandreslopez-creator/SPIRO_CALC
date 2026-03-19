@@ -245,14 +245,7 @@ def build_interpretation(age_years: Optional[float], params: Dict[str, Parameter
     if fev1.measured_post is not None or fvc.measured_post is not None:
         broncho_status, broncho_note = bronchodilator_response(fev1, fvc, age_years)
 
-    technical_lines = [quality_text.strip()] if quality_text.strip() else []
-    technical_lines.append(pattern)
-    if severity != "No aplica":
-        technical_lines.append(f"Severidad funcional: {severity}.")
-    if broncho_status != "No realizado":
-        technical_lines.append(f"Respuesta broncodilatadora: {broncho_status.lower()}.")
-
-    technical_report = " ".join(technical_lines)
+    technical_report = quality_text.strip()
     medical_comment = " ".join(comments + [broncho_note])
 
     return {
