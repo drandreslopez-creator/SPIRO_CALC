@@ -214,14 +214,7 @@ def build_interpretation(age_years: Optional[float], params: Dict[str, Parameter
     if fev1.measured_post is not None or fvc.measured_post is not None:
         broncho_status, broncho_note = bronchodilator_response(fev1, fvc, age_years)
 
-    technical_lines = [quality_text.strip()] if quality_text.strip() else []
-    technical_lines.append(pattern)
-    if severity != "No aplica":
-        technical_lines.append(f"Severidad funcional: {severity}.")
-    if broncho_status != "No realizado":
-        technical_lines.append(f"Respuesta broncodilatadora: {broncho_status.lower()}.")
-
-    technical_report = " ".join(technical_lines)
+    technical_report = quality_text.strip()
     medical_comment = " ".join(comments + [broncho_note])
 
     return {
@@ -352,7 +345,7 @@ def make_pdf(
         ["Sexo", patient.get("sexo", ""), "EPS", patient.get("eps", "")],
         ["Peso", patient.get("peso", ""), "Talla", patient.get("talla", "")],
         ["Médico remitente", patient.get("remitente", ""), "Fecha del estudio", study.get("fecha_estudio", "")],
-        ["Indicación clínica", study.get("indicacion", ""), "Diagnóstico / sospecha", study.get("diagnostico", "")],
+        ["Indicación clínica", study.get("indicacion", ""), "IDx", study.get("diagnostico", "")],
     ]
     story.append(Paragraph("1. Identificación del paciente", styles["Section"]))
     t = Table(patient_rows, colWidths=[3.2 * cm, 6.1 * cm, 3.0 * cm, 6.0 * cm])
@@ -405,7 +398,8 @@ def make_pdf(
         ["Severidad", interpretation["severity"]],
         ["Respuesta broncodilatadora", interpretation["bronchodilator"]],
         ["Reporte técnico", interpretation["technical_report"]],
-        ["Comentario médico", interpretation["medical_comment"]],
+        ["Resultado", interpretation["pattern"]],
+        ["Comentario médico", Paragraph(interpretation["medical_comment"], styles["Small"])],
     ]
     t3 = Table(interp_rows, colWidths=[4.5 * cm, 13.8 * cm])
     t3.setStyle(TableStyle([
@@ -506,7 +500,7 @@ with st.form("spirometry_form"):
     st.subheader("Datos clínicos y técnicos")
     d1, d2 = st.columns(2)
     indicacion = d1.text_area("Indicación clínica", placeholder="Ej. Asma en seguimiento, tos crónica, sospecha de alteración funcional respiratoria")
-    diagnostico = d2.text_area("Diagnóstico / sospecha", placeholder="Ej. Asma persistente, rinitis y tos de esfuerzo")
+    diagnostico = d2.text_area("IDx", placeholder="Ej. Asma persistente, rinitis y tos de esfuerzo")
 
     d3, d4, d5, d6 = st.columns(4)
     tipo_estudio = d3.selectbox("Tipo de estudio", ["Espirometría simple", "Espirometría pre y post broncodilatador"])
@@ -636,7 +630,8 @@ if submitted:
     tab1, tab2, tab3 = st.tabs(["Reporte técnico", "Interpretación médica", "Datos tabulados"])
     with tab1:
         st.markdown("### Texto sugerido para el reporte")
-        st.write(interpretation["technical_report"])
+        st.write(f"**Reporte técnico:** {interpretation['technical_report']}")
+        st.write(f"**Resultado:** {interpretation['pattern']}")
         if curve_image_1:
             st.image(curve_image_1, caption="Curva flujo-volumen")
         if curve_image_2:
