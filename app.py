@@ -622,6 +622,15 @@ with st.form("spirometry_form"):
     c7, c8, c9, c10 = st.columns(4)
     peso = c7.number_input("Peso (kg)", min_value=0.0, step=0.1, value=None, placeholder="Ej. 18.5")
     talla = c8.number_input("Talla (cm)", min_value=0.0, step=0.1, value=None, placeholder="Ej. 108")
+grupo_etnico = c8.selectbox(
+    "Grupo étnico",
+    ["", "Mestizo", "Blanco", "Afrodescendiente", "Indígena", "Otro"]
+)
+
+fuma = c9.selectbox(
+    "Fuma actualmente",
+    ["", "No", "Sí"]
+)
     fecha_estudio = c9.date_input("Fecha del estudio", value=date.today(), min_value=date(1900,1,1), max_value=date.today(), format="DD/MM/YYYY")
     id_tipo = c10.selectbox("Tipo de documento", ["CC", "TI", "RC", "CE", "Pasaporte", "Otro"])
 
