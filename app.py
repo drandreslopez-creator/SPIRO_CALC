@@ -647,15 +647,31 @@ with st.form("spirometry_form"):
         cols[0].markdown(f"{name} ({unit})")
 
         measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.01)
-        predicted = cols[2].number_input(f"{name}_pred", label_visibility="collapsed", value=None, step=0.01)
+       # Predicho automático
+pred_auto_map = {
+    "FEV1": pred_lln_values["FEV1_pred"],
+    "FVC": pred_lln_values["FVC_pred"],
+    "FEV1/FVC": pred_lln_values["FEV1FVC_pred"],
+}
+predicted = cols[2].number_input(
+    f"{name}_pred",
+    label_visibility="collapsed",
+    value=pred_auto_map.get(name, None),
+    step=0.01
+)
 
-        pct_auto = None
-        if measured_pre is not None and predicted not in (None, 0):
-            pct_auto = (float(measured_pre) / float(predicted)) * 100
-
-        cols[3].markdown(f"{fmt_num(pct_auto, 1)}")
-
-        lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.01)
+# LLN automático
+lln_auto_map = {
+    "FEV1": pred_lln_values["FEV1_LLN"],
+    "FVC": pred_lln_values["FVC_LLN"],
+    "FEV1/FVC": pred_lln_values["FEV1FVC_LLN"],
+}
+lln = cols[4].number_input(
+    f"{name}_lln",
+    label_visibility="collapsed",
+    value=lln_auto_map.get(name, None),
+    step=0.01
+)
 
         cols[5].markdown("Auto")
 
@@ -690,6 +706,13 @@ with st.form("spirometry_form"):
 if submitted:
     edad_num = age_in_years(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else None
     edad_txt = age_text(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else ""
+
+# Calcular valores predichos y LLN automáticos
+pred_lln_values = calcular_predichos_lln(
+    age=edad_num,
+    height=talla,
+    sex=sexo
+)
 
     params = {}
 
