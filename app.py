@@ -610,42 +610,41 @@ with st.form("spirometry_form"):
     rows_data = {}
     header_cols = st.columns([1.8, 1.2, 1.2, 1.1, 1.0, 1.0, 1.2, 1.0])
     headers = ["Parámetro", "Pre", "Predicho", "% auto", "LLN", "Z Pre", "Post", "Z Post"]
+
     for col, head in zip(header_cols, headers):
         col.markdown(f"**{head}**")
 
-  for   name, unit in param_config:
-    cols = st.columns([1.8, 1.2, 1.2, 1.1, 1.0, 1.0, 1.2, 1.0])
-    
-    cols[0].markdown(f"{name} ({unit})")
+    for name, unit in param_config:
+        cols = st.columns([1.8, 1.2, 1.2, 1.1, 1.0, 1.0, 1.2, 1.0])
 
-    measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.01)
-    predicted = cols[2].number_input(f"{name}_pred", label_visibility="collapsed", value=None, step=0.01)
+        cols[0].markdown(f"{name} ({unit})")
 
-    pct_auto = None
-    if measured_pre is not None and predicted not in (None, 0):
-        pct_auto = (float(measured_pre) / float(predicted)) * 100
+        measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.01)
+        predicted = cols[2].number_input(f"{name}_pred", label_visibility="collapsed", value=None, step=0.01)
 
-    cols[3].markdown(f"{fmt_num(pct_auto, 1)}")
+        pct_auto = None
+        if measured_pre is not None and predicted not in (None, 0):
+            pct_auto = (float(measured_pre) / float(predicted)) * 100
 
-    lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.01)
+        cols[3].markdown(f"{fmt_num(pct_auto, 1)}")
 
-    zpre = None
-    cols[5].markdown("Auto")
+        lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.01)
 
-    post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
+        cols[5].markdown("Auto")
 
-    zpost = None
-    cols[7].markdown("Auto")
+        post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
 
-    rows_data[name] = {
-        "unit": unit,
-        "pre": safe_float(measured_pre),
-        "pred": safe_float(predicted),
-        "lln": safe_float(lln),
-        "zpre": zpre,
-        "post": safe_float(post),
-        "zpost": zpost,
-    }
+        cols[7].markdown("Auto")
+
+        rows_data[name] = {
+            "unit": unit,
+            "pre": safe_float(measured_pre),
+            "pred": safe_float(predicted),
+            "lln": safe_float(lln),
+            "zpre": None,
+            "post": safe_float(post),
+            "zpost": None,
+        }
 
     st.subheader("Anexos del estudio")
     a1, a2, a3 = st.columns(3)
