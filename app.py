@@ -670,8 +670,6 @@ if submitted:
             zscore_pre=z_pre_auto,
             zscore_post=z_post_auto,
         )
-        for name, row in rows_data.items()
-    }
 
     quality_text = f"Calidad {calidad.lower()}, reproducibilidad {reproducibilidad.lower()} y cooperación {cooperacion.lower()}."
     interpretation = build_interpretation(edad_num, params, quality_text)
