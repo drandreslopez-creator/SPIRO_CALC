@@ -306,7 +306,7 @@ def build_interpretation(age_years: Optional[float], params: Dict[str, Parameter
         comments.append("Flujos de vías aéreas medias disminuidos (FEF25-75 reducido).")
 
     broncho_status = "No realizado"
-    broncho_note = "No se ingresaron valores post broncodilatador."
+    broncho_note = "No se realizó medición post broncodilatador."
     if fev1.measured_post is not None or fvc.measured_post is not None:
         broncho_status, broncho_note = bronchodilator_response(fev1, fvc, age_years)
 
