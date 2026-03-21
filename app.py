@@ -1,23 +1,23 @@
-# app_v3_0_GLI_ready.py
-# Versión avanzada con estructura tipo GLI (Z-score clínico)
+# app_v2_2_zscore.py
+# Versión con cálculo automático de Z-score (aproximación clínica)
 
 import streamlit as st
 
-st.set_page_config(page_title="Espirometría PRO GLI", layout="centered")
+st.set_page_config(page_title="Espirometría PRO", layout="centered")
 
-st.title("Espirometría PRO – Nivel GLI (v3.0)")
+st.title("Espirometría con Z-score automático (v2.2)")
 
 # =========================
 # DATOS PACIENTE
 # =========================
 st.header("Datos del paciente")
 
-edad = st.number_input("Edad (años)", min_value=3, max_value=100, value=30)
+edad = st.number_input("Edad (años)", min_value=1, max_value=100, value=30)
 sexo = st.selectbox("Sexo", ["Masculino", "Femenino"])
-talla = st.number_input("Talla (cm)", min_value=80, max_value=220, value=170)
+talla = st.number_input("Talla (cm)", min_value=50, max_value=220, value=170)
 
 # =========================
-# VALORES ESPIROMETRÍA
+# ESPIROMETRÍA
 # =========================
 st.header("Valores espirométricos")
 
@@ -27,21 +27,18 @@ fvc = st.number_input("FVC (L)", value=3.5)
 fev1_fvc = fev1 / fvc if fvc > 0 else 0
 
 # =========================
-# FUNCIONES TIPO GLI (APROXIMACIÓN)
+# FUNCIONES PREDICHAS (APROX)
 # =========================
 def pred_fev1(edad, talla, sexo):
-    base = (0.04 * talla) - (0.025 * edad)
-    return base if sexo == "Masculino" else base * 0.92
+    base = 0.04 * talla - 0.03 * edad
+    return base if sexo == "Masculino" else base * 0.9
 
 def pred_fvc(edad, talla, sexo):
-    base = (0.05 * talla) - (0.02 * edad)
-    return base if sexo == "Masculino" else base * 0.92
+    base = 0.05 * talla - 0.02 * edad
+    return base if sexo == "Masculino" else base * 0.9
 
-def sd(valor_pred):
-    return valor_pred * 0.12
-
-def z_score(valor, pred, sd):
-    return (valor - pred) / sd if sd != 0 else 0
+def z_score(valor, predicho, sd):
+    return (valor - predicho) / sd if sd != 0 else 0
 
 # =========================
 # CÁLCULOS
@@ -49,11 +46,14 @@ def z_score(valor, pred, sd):
 fev1_pred = pred_fev1(edad, talla, sexo)
 fvc_pred = pred_fvc(edad, talla, sexo)
 
-z_fev1 = z_score(fev1, fev1_pred, sd(fev1_pred))
-z_fvc = z_score(fvc, fvc_pred, sd(fvc_pred))
+sd_fev1 = fev1_pred * 0.15
+sd_fvc = fvc_pred * 0.15
+
+z_fev1 = z_score(fev1, fev1_pred, sd_fev1)
+z_fvc = z_score(fvc, fvc_pred, sd_fvc)
 
 # =========================
-# INTERPRETACIÓN CLÍNICA
+# INTERPRETACIÓN
 # =========================
 if edad < 18:
     corte = 0.85
@@ -61,23 +61,11 @@ else:
     corte = 0.70
 
 if fev1_fvc < corte:
-    patron = "Patrón ventilatorio obstructivo"
+    patron = "Obstructivo"
 elif z_fvc < -1.64:
-    patron = "Patrón ventilatorio restrictivo probable"
+    patron = "Restrictivo probable"
 else:
-    patron = "Espirometría dentro de límites normales"
-
-# =========================
-# SEVERIDAD POR Z-SCORE
-# =========================
-if z_fev1 >= -1.64:
-    severidad = "Normal"
-elif -2.5 < z_fev1 < -1.64:
-    severidad = "Leve"
-elif -4 < z_fev1 <= -2.5:
-    severidad = "Moderado"
-else:
-    severidad = "Severo"
+    patron = "Normal"
 
 # =========================
 # RESULTADOS
@@ -94,27 +82,26 @@ st.write(f"Relación FEV1/FVC: {fev1_fvc:.2f}")
 
 st.subheader("Interpretación")
 
-st.success(patron)
-st.info(f"Severidad funcional: {severidad}")
+st.success(f"Patrón: {patron}")
 
 # =========================
 # EXPLICACIÓN CLÍNICA
 # =========================
 st.subheader("Explicación clínica")
 
-if "obstructivo" in patron:
+if patron == "Obstructivo":
     st.write(
-        f"La relación FEV1/FVC ({fev1_fvc:.2f}) se encuentra por debajo del punto de corte esperado ({corte}), "
+        f"La relación FEV1/FVC ({fev1_fvc:.2f}) se encuentra por debajo del punto de corte ({corte}), "
         "lo que indica limitación al flujo aéreo compatible con patrón obstructivo."
     )
 
-elif "restrictivo" in patron:
+elif patron == "Restrictivo probable":
     st.write(
-        f"La FVC presenta un Z-score de {z_fvc:.2f}, inferior al límite inferior de normalidad (-1.64), "
-        "con relación FEV1/FVC conservada, lo que sugiere un patrón restrictivo."
+        f"La FVC presenta un Z-score de {z_fvc:.2f}, por debajo del límite inferior normal (-1.64), "
+        "con relación FEV1/FVC conservada, lo que sugiere un patrón restrictivo probable."
     )
 
 else:
     st.write(
-        "Los parámetros espirométricos se encuentran dentro de los valores normales para la edad, talla y sexo del paciente."
+        "Los parámetros espirométricos se encuentran dentro de los límites normales para el paciente."
     )
