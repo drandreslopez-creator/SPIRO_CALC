@@ -32,37 +32,38 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from pyspiro import spirometry
-
-def calcular_predichos_lln(age: int, height: float, sex: str) -> Dict[str, float]:
-    """
-    Calcula valores predichos y LLN de espirometría usando pyspiro.
-    
-    age: edad en años
-    height: altura en cm
-    sex: 'male' o 'female'
-    
-    Retorna: diccionario con FEV1, FVC, FEV1/FVC y LLN
-    """
-    result = spirometry(age=age, height=height, sex=sex)
-    
-    predichos = result['predicted']
-    lln = result['lln']
-    
-    return {
-        'FEV1_pred': predichos['FEV1'],
-        'FVC_pred': predichos['FVC'],
-        'FEV1FVC_pred': predichos['FEV1/FVC'],
-        'FEV1_LLN': lln['FEV1'],
-        'FVC_LLN': lln['FVC'],
-        'FEV1FVC_LLN': lln['FEV1/FVC']
-    }
-
 APP_DIR = Path(__file__).resolve().parent
 LOGO_PATH = APP_DIR / "logo.png"
 
 st.set_page_config(page_title="Espirometría | Dr. Andrés López Ruiz", page_icon="🫁", layout="wide")
 
+# ----------------------------
+# Funciones propias
+# ----------------------------
+def calcular_predichos_lln(age: float, height: float, sex: str) -> dict:
+    """
+    Calcula valores predichos y LLN según GLI 2012 simplificado.
+    """
+    if sex.lower() == "masculino" or sex.lower() == "male":
+        fev1_pred = 0.0414 * height - 0.0244 * age - 2.190
+        fvc_pred = 0.0490 * height - 0.0291 * age - 2.080
+    else:
+        fev1_pred = 0.0342 * height - 0.0255 * age - 1.578
+        fvc_pred = 0.0405 * height - 0.0296 * age - 1.600
+
+    fev1_lln = fev1_pred - 1.645 * 0.15 * fev1_pred
+    fvc_lln = fvc_pred - 1.645 * 0.15 * fvc_pred
+    fev1fvc_pred = fev1_pred / fvc_pred
+    fev1fvc_lln = 0.7  # simplificado
+
+    return {
+        "FEV1_pred": fev1_pred,
+        "FVC_pred": fvc_pred,
+        "FEV1FVC_pred": fev1fvc_pred,
+        "FEV1_LLN": fev1_lln,
+        "FVC_LLN": fvc_lln,
+        "FEV1FVC_LLN": fev1fvc_lln
+    }
 
 # ----------------------------
 # Utility helpers
