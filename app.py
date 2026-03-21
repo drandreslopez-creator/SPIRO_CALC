@@ -129,45 +129,50 @@ def calculate_zscore(measured: Optional[float], predicted: Optional[float], para
 # ----------------------------
 # Función para calcular predichos y LLN
 # ----------------------------
-def calcular_predichos_lln(parametros: Dict[str, dict], edad: Optional[float], sexo: str, altura: Optional[float]) -> Dict[str, dict]:
+def calcular_predichos_lln(rows_data: dict, edad: Optional[float], sexo: str, talla: Optional[float]) -> dict:
     """
-    Calcula valores predichos y LLN según edad, sexo y altura.
-    Retorna un diccionario con 'pred' y 'lln' para cada parámetro.
+    Calcula valores predichos y LLN automáticos para los parámetros espirométricos.
+    Maneja casos donde faltan datos sin producir errores.
     """
-    resultados = {}
-    if altura is None or edad is None or sexo not in ("Femenino", "Masculino"):
-        return parametros  # Si no hay datos, devuelve los ingresados
+    if edad is None or sexo not in ["Femenino", "Masculino"] or talla is None:
+        return rows_data  # No hay datos suficientes, devuelve tal cual
 
-    for nombre, datos in parametros.items():
-        h = altura / 100  # convertir cm a m si se requiere
-        e = edad
-        s = 1 if sexo == "Masculino" else 0
+    rows_updated = {}
+    for name, row in rows_data.items():
+        # Datos base
+        pred = row.get("pred")
+        lln = row.get("lln")
 
-        # Fórmulas simples de predicho aproximadas (puedes ajustar según GLI)
-        if nombre == "FVC":
-            pred = 3.5 * h - 0.03 * e + 0.2 * s
-        elif nombre == "FEV1":
-            pred = 2.8 * h - 0.025 * e + 0.15 * s
-        elif nombre == "FEV1/FVC":
-            pred = 0.8 - 0.002 * e
-        elif nombre == "PEF":
-            pred = 8.0 * h - 0.1 * e
-        elif nombre == "FEF25-75":
-            pred = 3.0 * h - 0.03 * e
-        else:
-            pred = datos.get("pre")  # mantener lo que el usuario ingrese
+        # Calcular predicho automáticamente si falta
+        if pred is None:
+            # Fórmula simplificada de ejemplo (puedes reemplazar con tus ecuaciones específicas)
+            # Aquí solo usamos talla y sexo de manera simple
+            if name in ["FVC", "FEV1"]:
+                factor = 0.04 if sexo == "Masculino" else 0.035
+                pred = talla * factor * edad ** 0.5  # ejemplo
+            elif name == "FEV1/FVC":
+                pred = 0.8  # valor de referencia promedio
+            elif name in ["PEF", "FEF25-75"]:
+                pred = 0.5 * talla  # ejemplo simplificado
+            else:
+                pred = 1.0  # valor por defecto seguro
 
-        # LLN aproximado = predicho - 1.64*SD
-        sd = estimate_sd(pred, nombre) or 0
-        lln = pred - 1.64 * sd
+        # Calcular desviación estándar (SD) para LLN
+        sd = estimate_sd(pred, name)
+        if sd is None:
+            sd = pred * 0.15  # fallback si estimate_sd devuelve None
 
-        resultados[nombre] = {
-            **datos,
-            "pred": pred,
-            "lln": lln,
-        }
-    return resultados
+        # Calcular LLN si falta
+        if lln is None:
+            lln = pred - 1.64 * sd
 
+        # Guardar los valores calculados
+        updated_row = row.copy()
+        updated_row["pred"] = pred
+        updated_row["lln"] = lln
+        rows_updated[name] = updated_row
+
+    return rows_updated
 
 # ----------------------------
 # Clinical engine
@@ -710,7 +715,6 @@ if submitted:
     rows_data = calcular_predichos_lln(rows_data, edad_num, sexo, talla)
 
     params = {}
-
     for name, row in rows_data.items():
         z_pre_auto = calculate_zscore(row["pre"], row["pred"], name)
         z_post_auto = calculate_zscore(row["post"], row["pred"], name)
