@@ -269,7 +269,7 @@ def bronchodilator_response(fev1: ParameterResult, fvc: ParameterResult, age_yea
 
     if pos_fev1 or pos_fvc:
         return "Significativa", " ".join(notes)
-    return "No significativa", "Sin cambios relevantes tras broncodilatador según los criterios automáticos configurados."
+    return "No significativa", "Sin cambios relevantes tras administración de broncodilatador."
 
 
 def build_interpretation(age_years: Optional[float], params: Dict[str, ParameterResult], quality_text: str) -> Dict[str, str]:
