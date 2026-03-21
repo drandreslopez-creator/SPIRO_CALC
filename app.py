@@ -621,23 +621,19 @@ with st.form("spirometry_form"):
     measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.01)
     predicted = cols[2].number_input(f"{name}_pred", label_visibility="collapsed", value=None, step=0.01)
 
-    # % automático
     pct_auto = None
     if measured_pre is not None and predicted not in (None, 0):
         pct_auto = (float(measured_pre) / float(predicted)) * 100
+
     cols[3].markdown(f"{fmt_num(pct_auto, 1)}")
 
-    # LLN sí editable
     lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.01)
 
-    # ❌ Z ya NO es input
     zpre = None
     cols[5].markdown("Auto")
 
-    # POST
     post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
 
-    # ❌ Z post tampoco input
     zpost = None
     cols[7].markdown("Auto")
 
