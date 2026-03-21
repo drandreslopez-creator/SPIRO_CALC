@@ -37,33 +37,6 @@ LOGO_PATH = APP_DIR / "logo.png"
 
 st.set_page_config(page_title="Espirometría | Dr. Andrés López Ruiz", page_icon="🫁", layout="wide")
 
-# ----------------------------
-# Funciones propias
-# ----------------------------
-def calcular_predichos_lln(age: float, height: float, sex: str) -> dict:
-    """
-    Calcula valores predichos y LLN según GLI 2012 simplificado.
-    """
-    if sex.lower() == "masculino" or sex.lower() == "male":
-        fev1_pred = 0.0414 * height - 0.0244 * age - 2.190
-        fvc_pred = 0.0490 * height - 0.0291 * age - 2.080
-    else:
-        fev1_pred = 0.0342 * height - 0.0255 * age - 1.578
-        fvc_pred = 0.0405 * height - 0.0296 * age - 1.600
-
-    fev1_lln = fev1_pred - 1.645 * 0.15 * fev1_pred
-    fvc_lln = fvc_pred - 1.645 * 0.15 * fvc_pred
-    fev1fvc_pred = fev1_pred / fvc_pred
-    fev1fvc_lln = 0.7  # simplificado
-
-    return {
-        "FEV1_pred": fev1_pred,
-        "FVC_pred": fvc_pred,
-        "FEV1FVC_pred": fev1fvc_pred,
-        "FEV1_LLN": fev1_lln,
-        "FVC_LLN": fvc_lln,
-        "FEV1FVC_LLN": fev1fvc_lln
-    }
 
 # ----------------------------
 # Utility helpers
@@ -152,6 +125,48 @@ def calculate_zscore(measured: Optional[float], predicted: Optional[float], para
         return None
 
     return (measured - predicted) / sd
+
+# ----------------------------
+# Función para calcular predichos y LLN
+# ----------------------------
+def calcular_predichos_lln(parametros: Dict[str, dict], edad: Optional[float], sexo: str, altura: Optional[float]) -> Dict[str, dict]:
+    """
+    Calcula valores predichos y LLN según edad, sexo y altura.
+    Retorna un diccionario con 'pred' y 'lln' para cada parámetro.
+    """
+    resultados = {}
+    if altura is None or edad is None or sexo not in ("Femenino", "Masculino"):
+        return parametros  # Si no hay datos, devuelve los ingresados
+
+    for nombre, datos in parametros.items():
+        h = altura / 100  # convertir cm a m si se requiere
+        e = edad
+        s = 1 if sexo == "Masculino" else 0
+
+        # Fórmulas simples de predicho aproximadas (puedes ajustar según GLI)
+        if nombre == "FVC":
+            pred = 3.5 * h - 0.03 * e + 0.2 * s
+        elif nombre == "FEV1":
+            pred = 2.8 * h - 0.025 * e + 0.15 * s
+        elif nombre == "FEV1/FVC":
+            pred = 0.8 - 0.002 * e
+        elif nombre == "PEF":
+            pred = 8.0 * h - 0.1 * e
+        elif nombre == "FEF25-75":
+            pred = 3.0 * h - 0.03 * e
+        else:
+            pred = datos.get("pre")  # mantener lo que el usuario ingrese
+
+        # LLN aproximado = predicho - 1.64*SD
+        sd = estimate_sd(pred, nombre) or 0
+        lln = pred - 1.64 * sd
+
+        resultados[nombre] = {
+            **datos,
+            "pred": pred,
+            "lln": lln,
+        }
+    return resultados
 
 
 # ----------------------------
@@ -641,58 +656,37 @@ with st.form("spirometry_form"):
     for col, head in zip(header_cols, headers):
         col.markdown(f"**{head}**")
 
-for name, unit in param_config:
-    cols = st.columns([1.8, 1.2, 1.2, 1.1, 1.0, 1.0, 1.2, 1.0])
+    for name, unit in param_config:
+        cols = st.columns([1.8, 1.2, 1.2, 1.1, 1.0, 1.0, 1.2, 1.0])
 
-    # Nombre del parámetro
-    cols[0].markdown(f"{name} ({unit})")
+        cols[0].markdown(f"{name} ({unit})")
 
-    # Medición basal
-    measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.01)
+        measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.01)
+        predicted = cols[2].number_input(f"{name}_pred", label_visibility="collapsed", value=None, step=0.01)
 
-    # Valores predichos automáticos
-    pred_auto_map = {
-        "FEV1": pred_lln_values["FEV1_pred"],
-        "FVC": pred_lln_values["FVC_pred"],
-        "FEV1/FVC": pred_lln_values["FEV1FVC_pred"],
-    }
-    predicted = cols[2].number_input(
-        f"{name}_pred",
-        label_visibility="collapsed",
-        value=pred_auto_map.get(name, None),
-        step=0.01
-    )
+        pct_auto = None
+        if measured_pre is not None and predicted not in (None, 0):
+            pct_auto = (float(measured_pre) / float(predicted)) * 100
 
-    # LLN automático
-    lln_auto_map = {
-        "FEV1": pred_lln_values["FEV1_LLN"],
-        "FVC": pred_lln_values["FVC_LLN"],
-        "FEV1/FVC": pred_lln_values["FEV1FVC_LLN"],
-    }
-    lln = cols[4].number_input(
-        f"{name}_lln",
-        label_visibility="collapsed",
-        value=lln_auto_map.get(name, None),
-        step=0.01
-    )
+        cols[3].markdown(f"{fmt_num(pct_auto, 1)}")
 
-    cols[5].markdown("Auto")
+        lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.01)
 
-    # Post-broncodilatador
-    post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
+        cols[5].markdown("Auto")
 
-    cols[7].markdown("Auto")
+        post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
 
-    # Guardar datos
-    rows_data[name] = {
-        "unit": unit,
-        "pre": safe_float(measured_pre),
-        "pred": safe_float(predicted),
-        "lln": safe_float(lln),
-        "zpre": None,
-        "post": safe_float(post),
-        "zpost": None,
-    }
+        cols[7].markdown("Auto")
+
+        rows_data[name] = {
+            "unit": unit,
+            "pre": safe_float(measured_pre),
+            "pred": safe_float(predicted),
+            "lln": safe_float(lln),
+            "zpre": None,
+            "post": safe_float(post),
+            "zpost": None,
+        }
 
     st.subheader("Anexos del estudio")
     a1, a2, a3 = st.columns(3)
@@ -712,13 +706,6 @@ if submitted:
     edad_num = age_in_years(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else None
     edad_txt = age_text(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else ""
 
-    # Calcular valores predichos y LLN automáticos
-    pred_lln_values = calcular_predichos_lln(
-        age=edad_num,
-        height=talla,
-        sex=sexo
-    )
-
     params = {}
 
     for name, row in rows_data.items():
@@ -736,44 +723,39 @@ if submitted:
             zscore_post=z_post_auto,
         )
 
-    interpretation = build_interpretation(edad_num, params, quality_text="Manejo automático de datos espirométricos")
+    quality_text = f"Calidad {calidad.lower()}, reproducibilidad {reproducibilidad.lower()} y cooperación {cooperacion.lower()}."
+    interpretation = build_interpretation(edad_num, params, quality_text)
+    if nota_medica_manual.strip():
+        interpretation["medical_comment"] = interpretation["medical_comment"] + " " + nota_medica_manual.strip()
+
+    patient_dict = {
+        "nombre": nombre,
+        "identificacion": f"{id_tipo} {identificacion}".strip(),
+        "fecha_nacimiento": fecha_nacimiento.strftime("%d/%m/%Y") if isinstance(fecha_nacimiento, date) else "",
+        "edad": edad_txt,
+        "sexo": sexo,
+        "eps": eps,
+        "peso": f"{peso:.1f} kg" if peso is not None else "",
+        "talla": f"{talla:.1f} cm" if talla is not None else "",
+        "remitente": remitente,
+    }
+    study_dict = {
+        "fecha_estudio": fecha_estudio.strftime("%d/%m/%Y") if isinstance(fecha_estudio, date) else "",
+        "indicacion": indicacion,
+        "diagnostico": diagnostico,
+        "tipo_estudio": tipo_estudio,
+        "calidad": calidad,
+        "reproducibilidad": reproducibilidad,
+        "cooperacion": cooperacion,
+        "broncodilatador": broncodilatador,
+        "tiempo_post": tiempo_post,
+    }
 
     attachments = {
         "curve_pdf": curve_pdf,
         "curve_image_1": curve_image_1,
         "curve_image_2": curve_image_2,
     }
-
-    pdf_bytes = make_pdf(
-        patient={
-            "nombre": nombre,
-            "identificacion": identificacion,
-            "fecha_nacimiento": fecha_nacimiento,
-            "edad": edad_txt,
-            "sexo": sexo,
-            "peso": peso,
-            "talla": talla,
-            "eps": eps,
-            "remitente": remitente,
-        },
-        study={
-            "fecha_estudio": fecha_estudio,
-            "indicacion": indicacion,
-            "diagnostico": diagnostico,
-            "tipo_estudio": tipo_estudio,
-            "calidad": calidad,
-            "reproducibilidad": reproducibilidad,
-            "cooperacion": cooperacion,
-            "broncodilatador": broncodilatador,
-            "tiempo_post": tiempo_post,
-        },
-        params=params,
-        interpretation=interpretation,
-        attachments=attachments
-    )
-
-    st.success("Reporte generado correctamente ✅")
-    st.download_button("Descargar PDF", pdf_bytes, file_name="reporte_espirometria.pdf", mime="application/pdf")
 
     pdf_bytes = make_pdf(patient_dict, study_dict, params, interpretation, attachments)
     csv_bytes = build_values_dataframe(params).to_csv(index=False).encode("utf-8-sig")
