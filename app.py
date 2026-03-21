@@ -666,7 +666,6 @@ if submitted:
             zscore_pre=row["zpre"] if row["zpre"] is not None else z_pre_auto,
         zscore_post=row["zpost"] if row["zpost"] is not None else z_post_auto,
         )
-        for name, row in rows_data.items()
     }
 
     quality_text = f"Calidad {calidad.lower()}, reproducibilidad {reproducibilidad.lower()} y cooperación {cooperacion.lower()}."
