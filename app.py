@@ -706,6 +706,9 @@ if submitted:
     edad_num = age_in_years(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else None
     edad_txt = age_text(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else ""
 
+# Calcular valores predichos y LLN automáticamente
+rows_data = calcular_predichos_lln(rows_data, edad_num, sexo, talla)
+
     params = {}
 
     for name, row in rows_data.items():
