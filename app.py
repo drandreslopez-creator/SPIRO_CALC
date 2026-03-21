@@ -712,12 +712,12 @@ if submitted:
     edad_num = age_in_years(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else None
     edad_txt = age_text(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else ""
 
-# Calcular valores predichos y LLN automáticos
-pred_lln_values = calcular_predichos_lln(
-    age=edad_num,
-    height=talla,
-    sex=sexo
-)
+    # Calcular valores predichos y LLN automáticos
+    pred_lln_values = calcular_predichos_lln(
+        age=edad_num,
+        height=talla,
+        sex=sexo
+    )
 
     params = {}
 
@@ -736,39 +736,44 @@ pred_lln_values = calcular_predichos_lln(
             zscore_post=z_post_auto,
         )
 
-    quality_text = f"Calidad {calidad.lower()}, reproducibilidad {reproducibilidad.lower()} y cooperación {cooperacion.lower()}."
-    interpretation = build_interpretation(edad_num, params, quality_text)
-    if nota_medica_manual.strip():
-        interpretation["medical_comment"] = interpretation["medical_comment"] + " " + nota_medica_manual.strip()
-
-    patient_dict = {
-        "nombre": nombre,
-        "identificacion": f"{id_tipo} {identificacion}".strip(),
-        "fecha_nacimiento": fecha_nacimiento.strftime("%d/%m/%Y") if isinstance(fecha_nacimiento, date) else "",
-        "edad": edad_txt,
-        "sexo": sexo,
-        "eps": eps,
-        "peso": f"{peso:.1f} kg" if peso is not None else "",
-        "talla": f"{talla:.1f} cm" if talla is not None else "",
-        "remitente": remitente,
-    }
-    study_dict = {
-        "fecha_estudio": fecha_estudio.strftime("%d/%m/%Y") if isinstance(fecha_estudio, date) else "",
-        "indicacion": indicacion,
-        "diagnostico": diagnostico,
-        "tipo_estudio": tipo_estudio,
-        "calidad": calidad,
-        "reproducibilidad": reproducibilidad,
-        "cooperacion": cooperacion,
-        "broncodilatador": broncodilatador,
-        "tiempo_post": tiempo_post,
-    }
+    interpretation = build_interpretation(edad_num, params, quality_text="Manejo automático de datos espirométricos")
 
     attachments = {
         "curve_pdf": curve_pdf,
         "curve_image_1": curve_image_1,
         "curve_image_2": curve_image_2,
     }
+
+    pdf_bytes = make_pdf(
+        patient={
+            "nombre": nombre,
+            "identificacion": identificacion,
+            "fecha_nacimiento": fecha_nacimiento,
+            "edad": edad_txt,
+            "sexo": sexo,
+            "peso": peso,
+            "talla": talla,
+            "eps": eps,
+            "remitente": remitente,
+        },
+        study={
+            "fecha_estudio": fecha_estudio,
+            "indicacion": indicacion,
+            "diagnostico": diagnostico,
+            "tipo_estudio": tipo_estudio,
+            "calidad": calidad,
+            "reproducibilidad": reproducibilidad,
+            "cooperacion": cooperacion,
+            "broncodilatador": broncodilatador,
+            "tiempo_post": tiempo_post,
+        },
+        params=params,
+        interpretation=interpretation,
+        attachments=attachments
+    )
+
+    st.success("Reporte generado correctamente ✅")
+    st.download_button("Descargar PDF", pdf_bytes, file_name="reporte_espirometria.pdf", mime="application/pdf")
 
     pdf_bytes = make_pdf(patient_dict, study_dict, params, interpretation, attachments)
     csv_bytes = build_values_dataframe(params).to_csv(index=False).encode("utf-8-sig")
