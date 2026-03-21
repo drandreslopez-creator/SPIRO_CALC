@@ -622,9 +622,13 @@ with st.form("spirometry_form"):
             pct_auto = (float(measured_pre) / float(predicted)) * 100
         cols[3].markdown(f"{fmt_num(pct_auto, 1)}")
         lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.01)
-        zpre = cols[5].number_input(f"{name}_zpre", label_visibility="collapsed", value=None, step=0.1)
+        zpre = None
         post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
-        zpost = cols[7].number_input(f"{name}_zpost", label_visibility="collapsed", value=None, step=0.1)
+        zpost = None
+
+cols[5].markdown("Auto")
+cols[7].markdown("Auto")
+
         rows_data[name] = {
             "unit": unit,
             "pre": safe_float(measured_pre),
