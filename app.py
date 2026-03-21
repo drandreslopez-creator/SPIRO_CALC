@@ -300,7 +300,7 @@ def build_interpretation(age_years: Optional[float], params: Dict[str, Parameter
         severity = severity_from_percent(min(filter(lambda x: x is not None, [fev1.pct_pred_pre, fvc.pct_pred_pre]), default=None))
         comments.append("Relación FEV1/FVC y FVC disminuidas, compatible con patrón mixto.")
     else:
-        comments.append("No se identifican alteraciones obstructivas o restrictivas evidentes en los parámetros ingresados.")
+        comments.append("No se identifican alteraciones obstructivas o restrictivas evidentes en los parámetros reportados.")
 
     if fef2575 and fef2575.pct_pred_pre is not None and fef2575.pct_pred_pre < 65:
         comments.append("Flujos de vías aéreas medias disminuidos (FEF25-75 reducido).")
