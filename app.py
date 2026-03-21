@@ -655,22 +655,19 @@ if submitted:
     edad_num = age_in_years(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else None
     edad_txt = age_text(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else ""
 
-    params = {}
-
-for name, row in rows_data.items():
-    z_pre_auto = calculate_zscore(row["pre"], row["pred"], name)
-    z_post_auto = calculate_zscore(row["post"], row["pred"], name)
-
-    params[name] = ParameterResult(
-        name=name,
-        unit=row["unit"],
-        measured_pre=row["pre"],
-        measured_post=row["post"],
-        predicted=row["pred"],
-        lln=row["lln"],
-        zscore_pre=row["zpre"] if row["zpre"] is not None else z_pre_auto,
+    params = {
+        name: ParameterResult(
+            name=name,
+            unit=row["unit"],
+            measured_pre=row["pre"],
+            measured_post=row["post"],
+            predicted=row["pred"],
+            lln=row["lln"],
+            zscore_pre=row["zpre"] if row["zpre"] is not None else z_pre_auto,
         zscore_post=row["zpost"] if row["zpost"] is not None else z_post_auto,
-    )
+        )
+        for name, row in rows_data.items()
+    }
 
     quality_text = f"Calidad {calidad.lower()}, reproducibilidad {reproducibilidad.lower()} y cooperación {cooperacion.lower()}."
     interpretation = build_interpretation(edad_num, params, quality_text)
