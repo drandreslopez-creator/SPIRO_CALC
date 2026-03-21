@@ -32,6 +32,32 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from pyspiro import spirometry
+
+def calcular_predichos_lln(age: int, height: float, sex: str) -> Dict[str, float]:
+    """
+    Calcula valores predichos y LLN de espirometría usando pyspiro.
+    
+    age: edad en años
+    height: altura en cm
+    sex: 'male' o 'female'
+    
+    Retorna: diccionario con FEV1, FVC, FEV1/FVC y LLN
+    """
+    result = spirometry(age=age, height=height, sex=sex)
+    
+    predichos = result['predicted']
+    lln = result['lln']
+    
+    return {
+        'FEV1_pred': predichos['FEV1'],
+        'FVC_pred': predichos['FVC'],
+        'FEV1FVC_pred': predichos['FEV1/FVC'],
+        'FEV1_LLN': lln['FEV1'],
+        'FVC_LLN': lln['FVC'],
+        'FEV1FVC_LLN': lln['FEV1/FVC']
+    }
+
 APP_DIR = Path(__file__).resolve().parent
 LOGO_PATH = APP_DIR / "logo.png"
 
