@@ -97,9 +97,11 @@ def ensure_session_defaults() -> None:
         if key not in st.session_state:
             st.session_state[key] = value
 
-# 🔥 NUEVAS FUNCIONES Z-SCORE
-
 def estimate_sd(predicted: float, param_name: str) -> Optional[float]:
+    """
+    Estima desviación estándar basada en coeficiente de variación (CV)
+    Valores aproximados basados en literatura espirométrica.
+    """
     if predicted is None:
         return None
 
@@ -113,17 +115,6 @@ def estimate_sd(predicted: float, param_name: str) -> Optional[float]:
 
     cv = cv_map.get(param_name, 0.20)
     return predicted * cv
-
-
-def calculate_zscore(measured: Optional[float], predicted: Optional[float], param_name: str) -> Optional[float]:
-    if measured is None or predicted is None:
-        return None
-
-    sd = estimate_sd(predicted, param_name)
-    if sd in (None, 0):
-        return None
-
-    return (measured - predicted) / sd
 
 
 # ----------------------------
@@ -613,29 +604,18 @@ with st.form("spirometry_form"):
         col.markdown(f"**{head}**")
 
     for name, unit in param_config:
-                cols = st.columns([1.8, 1.2, 1.2, 1.1, 1.0, 1.0, 1.2, 1.0])
-
+        cols = st.columns([1.8, 1.2, 1.2, 1.1, 1.0, 1.0, 1.2, 1.0])
         cols[0].markdown(f"{name} ({unit})")
         measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.01)
         predicted = cols[2].number_input(f"{name}_pred", label_visibility="collapsed", value=None, step=0.01)
-
         pct_auto = None
         if measured_pre is not None and predicted not in (None, 0):
             pct_auto = (float(measured_pre) / float(predicted)) * 100
-
         cols[3].markdown(f"{fmt_num(pct_auto, 1)}")
-
         lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.01)
-
-        # 🔥 CAMBIO
-        zpre = None
-        cols[5].markdown("Auto")
-
+        zpre = cols[5].number_input(f"{name}_zpre", label_visibility="collapsed", value=None, step=0.1)
         post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
-
-        zpost = None
-        cols[7].markdown("Auto")
-
+        zpost = cols[7].number_input(f"{name}_zpost", label_visibility="collapsed", value=None, step=0.1)
         rows_data[name] = {
             "unit": unit,
             "pre": safe_float(measured_pre),
