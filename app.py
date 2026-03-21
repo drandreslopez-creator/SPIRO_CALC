@@ -116,6 +116,16 @@ def estimate_sd(predicted: float, param_name: str) -> Optional[float]:
     cv = cv_map.get(param_name, 0.20)
     return predicted * cv
 
+def calculate_zscore(measured: Optional[float], predicted: Optional[float], param_name: str) -> Optional[float]:
+    if measured is None or predicted is None:
+        return None
+
+    sd = estimate_sd(predicted, param_name)
+    if sd in (None, 0):
+        return None
+
+    return (measured - predicted) / sd
+
 
 # ----------------------------
 # Clinical engine
