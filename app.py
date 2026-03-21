@@ -427,7 +427,7 @@ def make_pdf(
             RLImage(str(LOGO_PATH), width=2.7 * cm, height=2.7 * cm),
             Paragraph(
                 "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
-                "Médico Pediatra<br/>"
+                "Médico Especialista en Pediatría<br/>"
                 "Calle 11 No. 10 - 83 Consultorio 301<br/>"
                 "Edificio Centro Empresarial El Parque<br/>"
                 "Sogamoso, Boyacá · Tel. 3004270647",
@@ -556,7 +556,7 @@ def make_pdf(
         story.append(KeepTogether(curve_elements))
 
     story.append(Spacer(1, 0.35 * cm))
-    story.append(Paragraph("<b>Dr. Andrés López Ruiz</b><br/>Médico Pediatra<br/>RETHUS: 1082877373", styles["Small"]))
+    story.append(Paragraph("<b>Dr. Andrés López Ruiz</b><br/>Médico Pediatra<br/>RM 1082877373", styles["Small"]))
 
     doc.build(story)
     main_pdf = buffer.getvalue()
