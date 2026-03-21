@@ -555,7 +555,7 @@ def make_pdf(
 
         story.append(KeepTogether(curve_elements))
 
-    story.append(Spacer(1, 0.35 * cm))
+    story.append(Spacer(1, 2.50 * cm))
     story.append(Paragraph("<b>Dr. Andrés López Ruiz</b><br/>Médico Pediatra<br/>RM 1082877373", styles["Small"]))
 
     doc.build(story)
