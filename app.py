@@ -641,14 +641,16 @@ with st.form("spirometry_form"):
     for col, head in zip(header_cols, headers):
         col.markdown(f"**{head}**")
 
-    for name, unit in param_config:
+for name, unit in param_config:
     cols = st.columns([1.8, 1.2, 1.2, 1.1, 1.0, 1.0, 1.2, 1.0])
 
+    # Nombre del parámetro
     cols[0].markdown(f"{name} ({unit})")
 
+    # Medición basal
     measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.01)
 
-    # ← Todo esto debe estar indentado con 4 espacios más, al mismo nivel que measured_pre
+    # Valores predichos automáticos
     pred_auto_map = {
         "FEV1": pred_lln_values["FEV1_pred"],
         "FVC": pred_lln_values["FVC_pred"],
@@ -661,6 +663,7 @@ with st.form("spirometry_form"):
         step=0.01
     )
 
+    # LLN automático
     lln_auto_map = {
         "FEV1": pred_lln_values["FEV1_LLN"],
         "FVC": pred_lln_values["FVC_LLN"],
@@ -675,19 +678,21 @@ with st.form("spirometry_form"):
 
     cols[5].markdown("Auto")
 
+    # Post-broncodilatador
     post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
 
     cols[7].markdown("Auto")
 
-        rows_data[name] = {
-            "unit": unit,
-            "pre": safe_float(measured_pre),
-            "pred": safe_float(predicted),
-            "lln": safe_float(lln),
-            "zpre": None,
-            "post": safe_float(post),
-            "zpost": None,
-        }
+    # Guardar datos
+    rows_data[name] = {
+        "unit": unit,
+        "pre": safe_float(measured_pre),
+        "pred": safe_float(predicted),
+        "lln": safe_float(lln),
+        "zpre": None,
+        "post": safe_float(post),
+        "zpost": None,
+    }
 
     st.subheader("Anexos del estudio")
     a1, a2, a3 = st.columns(3)
