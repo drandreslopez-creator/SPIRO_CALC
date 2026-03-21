@@ -642,42 +642,42 @@ with st.form("spirometry_form"):
         col.markdown(f"**{head}**")
 
     for name, unit in param_config:
-        cols = st.columns([1.8, 1.2, 1.2, 1.1, 1.0, 1.0, 1.2, 1.0])
+    cols = st.columns([1.8, 1.2, 1.2, 1.1, 1.0, 1.0, 1.2, 1.0])
 
-        cols[0].markdown(f"{name} ({unit})")
+    cols[0].markdown(f"{name} ({unit})")
 
-        measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.01)
-       # Predicho automático
-pred_auto_map = {
-    "FEV1": pred_lln_values["FEV1_pred"],
-    "FVC": pred_lln_values["FVC_pred"],
-    "FEV1/FVC": pred_lln_values["FEV1FVC_pred"],
-}
-predicted = cols[2].number_input(
-    f"{name}_pred",
-    label_visibility="collapsed",
-    value=pred_auto_map.get(name, None),
-    step=0.01
-)
+    measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.01)
 
-# LLN automático
-lln_auto_map = {
-    "FEV1": pred_lln_values["FEV1_LLN"],
-    "FVC": pred_lln_values["FVC_LLN"],
-    "FEV1/FVC": pred_lln_values["FEV1FVC_LLN"],
-}
-lln = cols[4].number_input(
-    f"{name}_lln",
-    label_visibility="collapsed",
-    value=lln_auto_map.get(name, None),
-    step=0.01
-)
+    # ← Todo esto debe estar indentado con 4 espacios más, al mismo nivel que measured_pre
+    pred_auto_map = {
+        "FEV1": pred_lln_values["FEV1_pred"],
+        "FVC": pred_lln_values["FVC_pred"],
+        "FEV1/FVC": pred_lln_values["FEV1FVC_pred"],
+    }
+    predicted = cols[2].number_input(
+        f"{name}_pred",
+        label_visibility="collapsed",
+        value=pred_auto_map.get(name, None),
+        step=0.01
+    )
 
-        cols[5].markdown("Auto")
+    lln_auto_map = {
+        "FEV1": pred_lln_values["FEV1_LLN"],
+        "FVC": pred_lln_values["FVC_LLN"],
+        "FEV1/FVC": pred_lln_values["FEV1FVC_LLN"],
+    }
+    lln = cols[4].number_input(
+        f"{name}_lln",
+        label_visibility="collapsed",
+        value=lln_auto_map.get(name, None),
+        step=0.01
+    )
 
-        post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
+    cols[5].markdown("Auto")
 
-        cols[7].markdown("Auto")
+    post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
+
+    cols[7].markdown("Auto")
 
         rows_data[name] = {
             "unit": unit,
