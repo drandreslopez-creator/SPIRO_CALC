@@ -623,21 +623,23 @@ with st.form("spirometry_form"):
         cols[3].markdown(f"{fmt_num(pct_auto, 1)}")
         lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.01)
         zpre = None
-        post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
-        zpost = None
-
 cols[5].markdown("Auto")
+
+post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
+
+zpost = None
 cols[7].markdown("Auto")
 
-        rows_data[name] = {
-            "unit": unit,
-            "pre": safe_float(measured_pre),
-            "pred": safe_float(predicted),
-            "lln": safe_float(lln),
-            "zpre": safe_float(zpre),
-            "post": safe_float(post),
-            "zpost": safe_float(zpost),
-        }
+# 🔥 ESTO DEBE QUEDAR AL MISMO NIVEL
+rows_data[name] = {
+    "unit": unit,
+    "pre": safe_float(measured_pre),
+    "pred": safe_float(predicted),
+    "lln": safe_float(lln),
+    "zpre": safe_float(zpre),
+    "post": safe_float(post),
+    "zpost": safe_float(zpost),
+}
 
     st.subheader("Anexos del estudio")
     a1, a2, a3 = st.columns(3)
