@@ -88,32 +88,6 @@ def age_text(dob: Optional[date]) -> str:
     return " y ".join(parts)
 
 
-def estimate_sd(predicted: float, param_name: str) -> Optional[float]:
-    if predicted is None:
-        return None
-
-    cv_map = {
-        "FEV1": 0.15,
-        "FVC": 0.15,
-        "FEV1/FVC": 0.08,
-        "FEF25-75": 0.25,
-        "PEF": 0.20,
-    }
-
-    cv = cv_map.get(param_name, 0.20)
-    return predicted * cv
-
-
-def calculate_zscore(measured: Optional[float], predicted: Optional[float], param_name: str) -> Optional[float]:
-    if measured is None or predicted is None:
-        return None
-
-    sd = estimate_sd(predicted, param_name)
-    if sd in (None, 0):
-        return None
-
-    return (measured - predicted) / sd
-
 def ensure_session_defaults() -> None:
     defaults = {
         "include_post": False,
@@ -620,10 +594,9 @@ with st.form("spirometry_form"):
             pct_auto = (float(measured_pre) / float(predicted)) * 100
         cols[3].markdown(f"{fmt_num(pct_auto, 1)}")
         lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.01)
-        zpre = None
-zpost = None
-cols[5].markdown("Auto")
-cols[7].markdown("Auto")
+        zpre = cols[5].number_input(f"{name}_zpre", label_visibility="collapsed", value=None, step=0.1)
+        post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
+        zpost = cols[7].number_input(f"{name}_zpost", label_visibility="collapsed", value=None, step=0.1)
         rows_data[name] = {
             "unit": unit,
             "pre": safe_float(measured_pre),
@@ -653,22 +626,19 @@ if submitted:
     edad_num = age_in_years(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else None
     edad_txt = age_text(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else ""
 
-    params = {}
-
-for name, row in rows_data.items():
-    z_pre_auto = calculate_zscore(row["pre"], row["pred"], name)
-    z_post_auto = calculate_zscore(row["post"], row["pred"], name)
-
-    params[name] = ParameterResult(
-        name=name,
-        unit=row["unit"],
-        measured_pre=row["pre"],
-        measured_post=row["post"],
-        predicted=row["pred"],
-        lln=row["lln"],
-        zscore_pre=z_pre_auto,
-        zscore_post=z_post_auto,
-    )
+    params = {
+        name: ParameterResult(
+            name=name,
+            unit=row["unit"],
+            measured_pre=row["pre"],
+            measured_post=row["post"],
+            predicted=row["pred"],
+            lln=row["lln"],
+            zscore_pre=row["zpre"],
+            zscore_post=row["zpost"],
+        )
+        for name, row in rows_data.items()
+    }
 
     quality_text = f"Calidad {calidad.lower()}, reproducibilidad {reproducibilidad.lower()} y cooperación {cooperacion.lower()}."
     interpretation = build_interpretation(edad_num, params, quality_text)
