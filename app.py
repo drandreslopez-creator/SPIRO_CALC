@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Any
 
 # Módulos propios
 from utils.calculations import *
@@ -7,14 +6,13 @@ from services.interpretation import build_interpretation
 from services.pdf_generator import make_pdf, build_values_dataframe, build_summary_chart
 
 # Librerías necesarias para la app
-import math
 import tempfile
 import zipfile
 from dataclasses import dataclass
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import streamlit as st
 
