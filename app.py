@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from utils.calculations import 
-
-from services.interpretation import build_interpretation *
+from utils.calculations import *
+from services.interpretation import build_interpretation
 
 import io
 import math
