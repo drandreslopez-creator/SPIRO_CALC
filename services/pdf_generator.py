@@ -1,5 +1,7 @@
 # services/pdf_generator.py
 
+from reportlab.platypus import PageBreak
+
 from utils.calculations import fmt_num
 
 import io
@@ -20,6 +22,7 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
+    PageBreak
 )
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -145,30 +148,26 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     story = []
 
-    # HEADER
+        # HEADER
     if LOGO_PATH.exists():
         header = Table(
-    [[
-        RLImage(str(LOGO_PATH), width=2.5 * cm, height=2.5 * cm),
-        Paragraph(
-            "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
-            "Médico Especialista en Pediatría<br/>"
-            "Calle 11 No. 10 - 83 Consultorio 301<br/>"
-            "Edificio Centro Empresarial El Parque<br/>"
-            "Sogamoso, Boyacá · Tel. 3004270647",
-            styles["XSmall"],
+            [[
+                RLImage(str(LOGO_PATH), width=3.0 * cm, height=3.0 * cm),
+                Paragraph(
+                    "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
+                    "Médico Especialista en Pediatría<br/>"
+                    "Calle 11 No. 10 - 83 Consultorio 301<br/>"
+                    "Edificio Centro Empresarial El Parque<br/>"
+                    "Sogamoso, Boyacá · Tel. 3004270647",
+                    styles["XSmall"],
+                )
+            ]],
+            colWidths=[3.5 * cm, 13.5 * cm]
         )
-    ]],
-    colWidths=[3*cm, 15*cm]
-)
 
-header.setStyle(TableStyle([
-    ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-    ("LEFTPADDING", (0,0), (-1,-1), 0),
-    ("RIGHTPADDING", (0,0), (-1,-1), 0),
-    ("TOPPADDING", (0,0), (-1,-1), 0),
-    ("BOTTOMPADDING", (0,0), (-1,-1), 0),
-]))
+        header.setStyle(TableStyle([
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ]))
 
         story.append(header)
         story.append(Spacer(1, 6))
@@ -238,11 +237,29 @@ header.setStyle(TableStyle([
     for col in display_df.columns:
         display_df[col] = display_df[col].apply(fmt)
 
-    table_data = [display_df.columns.tolist()] + display_df.values.tolist()
+    headers = [
+        "Parámetro","Unidad","Pre","Predicho","%Pred Pre",
+        "LLN","Z Pre","Post","%Pred Post","Z Post","Δ Abs","Δ %"
+    ]
 
-    col_widths = [2.5*cm,1.2*cm,1.3*cm,1.5*cm,1.5*cm,1.3*cm,1.2*cm,1.3*cm,1.5*cm,1.2*cm,1.3*cm,1.3*cm]
+    table_data = [headers] + display_df.values.tolist()
 
-    story.append(Table(table_data, repeatRows=1, colWidths=col_widths))
+    col_widths = [
+        2.5*cm,1.2*cm,1.3*cm,1.5*cm,1.5*cm,
+        1.3*cm,1.2*cm,1.3*cm,1.5*cm,1.2*cm,
+        1.3*cm,1.3*cm
+    ]
+
+    table = Table(table_data, repeatRows=1, colWidths=col_widths)
+
+    table.setStyle(TableStyle([
+        ("GRID",(0,0),(-1,-1),0.25,colors.grey),
+        ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
+        ("FONTSIZE",(0,0),(-1,-1),8),
+        ("ALIGN",(2,1),(-1,-1),"CENTER"),
+    ]))
+
+    story.append(table)
 
     # INTERPRETACIÓN
     story.append(Spacer(1, 6))
@@ -263,18 +280,15 @@ header.setStyle(TableStyle([
 
     story.append(t3)
 
-    # GRÁFICA
-    story.append(Spacer(1, 6))
+    # GRÁFICA EN NUEVA PÁGINA
+    story.append(PageBreak())
+
     story.append(Paragraph("5. Resumen gráfico", styles["XSection"]))
-    story.append(RLImage(build_summary_chart(params), width=12*cm, height=6*cm))
+    story.append(RLImage(build_summary_chart(params), width=14*cm, height=7*cm))
 
     # FIRMA
     story.append(Spacer(1, 30))
-    story.append(Paragraph("<b>Dr. Andrés López Ruiz</b><br/>Médico Pediatra<br/>RM 1082877373", styles["XSmall"]))
-
-    doc.build(story)
-
-    pdf = buffer.getvalue()
-    buffer.close()
-
-    return pdf
+    story.append(Paragraph(
+        "<b>Dr. Andrés López Ruiz</b><br/>Médico Pediatra<br/>RM 1082877373",
+        styles["XSmall"]
+    ))
