@@ -150,7 +150,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
     if LOGO_PATH.exists():
         header = Table(
             [[
-                RLImage(str(LOGO_PATH), width=3.0 * cm, height=3.0 * cm),
+                RLImage(str(LOGO_PATH), width=2.7 * cm, height=2.7 * cm),
                 Paragraph(
                     "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
                     "Médico Especialista en Pediatría<br/>"
@@ -160,7 +160,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
                     styles["XSmall"],
                 )
             ]],
-            colWidths=[3.5 * cm, 13.5 * cm]
+            colWidths=[2.8 * cm, 14.2 * cm]
         )
 
         header.setStyle(TableStyle([
