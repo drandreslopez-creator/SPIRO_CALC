@@ -1,6 +1,6 @@
-from utils.calculations import *
-
 from __future__ import annotations
+
+from utils.calculations import *
 
 import io
 import math
