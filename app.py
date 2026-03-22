@@ -756,6 +756,8 @@ if submitted:
         "peso": f"{peso:.1f} kg" if peso is not None else "",
         "talla": f"{talla:.1f} cm" if talla is not None else "",
         "remitente": remitente,
+	"grupo_etnico": grupo_etnico,
+	"fumador": fumador,
     }
     study_dict = {
         "fecha_estudio": fecha_estudio.strftime("%d/%m/%Y") if isinstance(fecha_estudio, date) else "",
