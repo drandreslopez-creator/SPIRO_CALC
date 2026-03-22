@@ -145,19 +145,22 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     story = []
 
-    # 🔹 HEADER
+    # HEADER
     if LOGO_PATH.exists():
-        header = Table([[
-            RLImage(str(LOGO_PATH), width=2.7 * cm, height=2.7 * cm),
-            Paragraph(
-                "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
-                "Médico Especialista en Pediatría<br/>"
-                "Calle 11 No. 10 - 83 Consultorio 301<br/>"
-                "Edificio Centro Empresarial El Parque<br/>"
-                "Sogamoso, Boyacá · Tel. 3004270647",
-                styles["XSmall"],
-            ),
-        ]], colWidths=[3.2 * cm, 14.6 * cm])
+        header = Table(
+            [[
+                RLImage(str(LOGO_PATH), width=2.7 * cm, height=2.7 * cm),
+                Paragraph(
+                    "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
+                    "Médico Especialista en Pediatría<br/>"
+                    "Calle 11 No. 10 - 83 Consultorio 301<br/>"
+                    "Edificio Centro Empresarial El Parque<br/>"
+                    "Sogamoso, Boyacá · Tel. 3004270647",
+                    styles["XSmall"],
+                )
+            ]],
+            colWidths=[3.2 * cm, 14.6 * cm]
+        )
 
         story.append(header)
         story.append(Spacer(1, 6))
@@ -167,7 +170,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
     now = datetime.now(ZoneInfo("America/Bogota"))
     story.append(Paragraph(f"Fecha de generación: {now.strftime('%d/%m/%Y %H:%M')}", styles["XSmall"]))
 
-    # 🔹 PACIENTE
+    # PACIENTE
     story.append(Spacer(1, 6))
     story.append(Paragraph("1. Identificación del paciente", styles["XSection"]))
 
@@ -189,7 +192,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     story.append(t)
 
-    # 🔹 DATOS TÉCNICOS
+    # DATOS TÉCNICOS
     story.append(Spacer(1, 6))
     story.append(Paragraph("2. Datos técnicos del estudio", styles["XSection"]))
 
@@ -210,7 +213,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     story.append(t2)
 
-    # 🔹 RESULTADOS
+    # RESULTADOS
     story.append(Spacer(1, 6))
     story.append(Paragraph("3. Resultados espirométricos", styles["XSection"]))
 
@@ -233,7 +236,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     story.append(Table(table_data, repeatRows=1, colWidths=col_widths))
 
-    # 🔹 INTERPRETACIÓN
+    # INTERPRETACIÓN
     story.append(Spacer(1, 6))
     story.append(Paragraph("4. Interpretación", styles["XSection"]))
 
@@ -252,28 +255,12 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     story.append(t3)
 
-    # 🔹 GRÁFICA
+    # GRÁFICA
     story.append(Spacer(1, 6))
     story.append(Paragraph("5. Resumen gráfico", styles["XSection"]))
     story.append(RLImage(build_summary_chart(params), width=12*cm, height=6*cm))
 
-    # 🔹 FIRMA
-    story.append(Spacer(1, 30))
-    story.append(Paragraph("<b>Dr. Andrés López Ruiz</b><br/>Médico Pediatra<br/>RM 1082877373", styles["XSmall"]))
-
-    doc.build(story)
-
-    pdf = buffer.getvalue()
-    buffer.close()
-
-    return pdfstory.append(t3)
-
-    # 🔹 GRÁFICA
-    story.append(Spacer(1, 6))
-story.append(Paragraph("5. Resumen gráfico", styles["XSection"]))
-    story.append(RLImage(build_summary_chart(params), width=12*cm, height=6*cm))
-
-    # 🔹 FIRMA
+    # FIRMA
     story.append(Spacer(1, 30))
     story.append(Paragraph("<b>Dr. Andrés López Ruiz</b><br/>Médico Pediatra<br/>RM 1082877373", styles["XSmall"]))
 
