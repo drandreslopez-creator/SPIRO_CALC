@@ -25,6 +25,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
+from reportlab.lib.enums import TA_LEFT, TA_CENTER
 
 from pypdf import PdfReader, PdfWriter
 from PIL import Image
@@ -126,7 +127,7 @@ def build_values_dataframe(params: Dict[str, Any]) -> pd.DataFrame:
 def make_pdf(
     patient: Dict[str, str],
     study: Dict[str, str],
-    params: Dict[str, ParameterResult],
+    params: Dict[str, Any],
     interpretation: Dict[str, str],
     attachments: Dict[str, object],
 ) -> bytes:
