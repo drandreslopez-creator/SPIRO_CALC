@@ -1,15 +1,33 @@
+# utils/calculations.py
+
 import math
 from typing import Optional
+
+def fmt_num(value: Optional[float], digits: int = 2, suffix: str = "") -> str:
+    if value is None or value == "":
+        return "—"
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return "—"
+    if math.isnan(value):
+        return "—"
+    return f"{value:.{digits}f}{suffix}"
 
 def safe_float(value) -> Optional[float]:
     try:
         if value in (None, ""):
             return None
         return float(value)
-    except:
+    except (ValueError, TypeError):
         return None
 
+
 def estimate_sd(predicted: float, param_name: str) -> Optional[float]:
+    """
+    Estima desviación estándar basada en coeficiente de variación (CV)
+    Valores aproximados basados en literatura espirométrica.
+    """
     if predicted is None:
         return None
 
@@ -24,7 +42,8 @@ def estimate_sd(predicted: float, param_name: str) -> Optional[float]:
     cv = cv_map.get(param_name, 0.20)
     return predicted * cv
 
-def calculate_zscore(measured, predicted, param_name):
+
+def calculate_zscore(measured: Optional[float], predicted: Optional[float], param_name: str) -> Optional[float]:
     if measured is None or predicted is None:
         return None
 
