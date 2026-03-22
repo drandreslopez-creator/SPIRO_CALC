@@ -23,4 +23,9 @@ if st.button("Calcular"):
     st.success(resultado)
 
     pdf = generate_pdf(resultado)
-    st.download_button("Descargar PDF", pdf)
+    st.download_button(
+    "Descargar PDF",
+    data=pdf,
+    file_name="reporte_espirometria.pdf",
+    mime="application/pdf"
+)
