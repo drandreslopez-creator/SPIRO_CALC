@@ -125,57 +125,71 @@ def build_values_dataframe(params: Dict[str, Any]) -> pd.DataFrame:
 # PDF PRINCIPAL
 # ----------------------------
 def make_pdf(
-    patient: Dict[str, str],
-    study: Dict[str, str],
-    params: Dict[str, Any],
-    interpretation: Dict[str, str],
-    attachments: Dict[str, object],
+    patient,
+    study,
+    params,
+    interpretation,
+    attachments,
 ) -> bytes:
 
     styles = getSampleStyleSheet()
 
-    styles.add(ParagraphStyle(name="MySmall", fontSize=8.5, leading=10, alignment=TA_LEFT))
-    styles.add(ParagraphStyle(name="MyTitle", fontSize=13, leading=15, alignment=TA_CENTER, spaceAfter=8))
-    styles.add(ParagraphStyle(name="MySection", fontSize=10.5, leading=12, textColor=colors.HexColor("#1F4E79"), spaceBefore=6, spaceAfter=4))
+    styles.add(ParagraphStyle(name="MySmall", fontSize=8.5, leading=10))
+    styles.add(ParagraphStyle(name="MyTitle", fontSize=14, leading=16, alignment=TA_CENTER))
+    styles.add(ParagraphStyle(name="MySection", fontSize=11, leading=13, textColor=colors.HexColor("#1F4E79")))
 
     buffer = io.BytesIO()
-
     doc = SimpleDocTemplate(buffer, pagesize=A4)
 
     story = []
 
-    # TÍTULO
+    # ENCABEZADO
+    story.append(Paragraph("CONSULTORIO DR. ANDRÉS LÓPEZ RUIZ", styles["MyTitle"]))
+    story.append(Spacer(1, 6))
     story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["MyTitle"]))
+    story.append(Spacer(1, 10))
 
-    now = datetime.now(ZoneInfo("America/Bogota"))
-    story.append(Paragraph(now.strftime("%d/%m/%Y %H:%M"), styles["MySmall"]))
+    # DATOS PACIENTE
+    story.append(Paragraph("1. IDENTIFICACIÓN", styles["MySection"]))
+    story.append(Paragraph(f"Nombre: {patient.get('nombre','')}", styles["MySmall"]))
+    story.append(Paragraph(f"Documento: {patient.get('identificacion','')}", styles["MySmall"]))
+    story.append(Paragraph(f"Edad: {patient.get('edad','')} | Sexo: {patient.get('sexo','')}", styles["MySmall"]))
+    story.append(Spacer(1, 10))
 
-    # TABLA
-    df = build_values_dataframe(params)
+    # DATOS ESTUDIO
+    story.append(Paragraph("2. DATOS DEL ESTUDIO", styles["MySection"]))
+    story.append(Paragraph(f"Fecha: {study.get('fecha_estudio','')}", styles["MySmall"]))
+    story.append(Paragraph(f"Indicación: {study.get('indicacion','')}", styles["MySmall"]))
+    story.append(Spacer(1, 10))
 
-# FORMATEAR BIEN LOS DATOS
-df = df.fillna("")
+    # TABLA DE RESULTADOS
+    story.append(Paragraph("3. RESULTADOS ESPIROMÉTRICOS", styles["MySection"]))
 
-for col in df.columns:
-    df[col] = df[col].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x)
+    data = [["Parámetro", "Pre", "%Pred", "LLN", "Post"]]
 
-table_data = [df.columns.tolist()] + df.values.tolist()
+    for p in params.values():
+        data.append([
+            p.name,
+            f"{p.measured_pre or ''}",
+            f"{round(p.pct_pred_pre,1) if p.pct_pred_pre else ''}",
+            f"{p.lln or ''}",
+            f"{p.measured_post or ''}",
+        ])
 
-    table = Table(table_data)
+    table = Table(data)
     table.setStyle(TableStyle([
-        ("GRID", (0, 0), (-1, -1), 0.3, colors.grey)
+        ("GRID", (0,0), (-1,-1), 0.3, colors.black),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey)
     ]))
 
-    story.append(Spacer(1, 10))
     story.append(table)
-
-    # RESULTADO
     story.append(Spacer(1, 10))
-    story.append(Paragraph(f"Resultado: {interpretation['result']}", styles["MySmall"]))
 
-    # GRÁFICA
-    chart = build_summary_chart(params)
-    story.append(RLImage(chart, width=400, height=200))
+    # INTERPRETACIÓN
+    story.append(Paragraph("4. INTERPRETACIÓN", styles["MySection"]))
+    story.append(Paragraph(interpretation["technical_report"], styles["MySmall"]))
+    story.append(Spacer(1, 6))
+    story.append(Paragraph(interpretation["medical_comment"], styles["MySmall"]))
 
     doc.build(story)
 
