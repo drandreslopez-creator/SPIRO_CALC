@@ -164,8 +164,9 @@ def make_pdf(patient, study, params, interpretation, attachments):
         )
 
         header.setStyle(TableStyle([
-            ("VALIGN", (0,0), (-1,-1), "TOP"),
-        ]))
+    ("VALIGN", (0,0), (-1,-1), "TOP"),
+    ("TOPPADDING", (0,0), (0,0), -4),  # 🔥 sube el logo
+]))
 
         story.append(header)
         story.append(Spacer(1, 6))
