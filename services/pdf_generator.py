@@ -128,7 +128,6 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     styles = getSampleStyleSheet()
 
-    # ⚠️ nombres únicos
     styles.add(ParagraphStyle(name="XSmall", fontSize=8.5, leading=10, alignment=TA_LEFT))
     styles.add(ParagraphStyle(name="XTitle", fontSize=13, leading=15, alignment=TA_CENTER, spaceAfter=8))
     styles.add(ParagraphStyle(name="XSection", fontSize=10.5, leading=12, textColor=colors.HexColor("#1F4E79"), spaceBefore=6, spaceAfter=4))
@@ -151,13 +150,12 @@ def make_pdf(patient, study, params, interpretation, attachments):
         header = Table([[
             RLImage(str(LOGO_PATH), width=2.7 * cm, height=2.7 * cm),
             Paragraph(
-    "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
-    "Médico Especialista en Pediatría<br/>"
-    "Calle 11 No. 10 - 83 Consultorio 301<br/>"
-    "Edificio Centro Empresarial El Parque<br/>"
-    "Sogamoso, Boyacá · Tel. 3004270647",
-    styles["XSmall"],
-)
+                "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
+                "Médico Especialista en Pediatría<br/>"
+                "Calle 11 No. 10 - 83 Consultorio 301<br/>"
+                "Edificio Centro Empresarial El Parque<br/>"
+                "Sogamoso, Boyacá · Tel. 3004270647",
+                styles["XSmall"],
             ),
         ]], colWidths=[3.2 * cm, 14.6 * cm])
 
@@ -171,7 +169,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     # 🔹 PACIENTE
     story.append(Spacer(1, 6))
-story.append(Paragraph("3. Resultados espirométricos", styles["XSection"]))
+    story.append(Paragraph("1. Identificación del paciente", styles["XSection"]))
 
     t = Table([
         ["Nombre", patient.get("nombre",""), "Documento", patient.get("identificacion","")],
@@ -193,7 +191,7 @@ story.append(Paragraph("3. Resultados espirométricos", styles["XSection"]))
 
     # 🔹 DATOS TÉCNICOS
     story.append(Spacer(1, 6))
-story.append(Paragraph("2. Datos técnicos del estudio", styles["XSection"]))
+    story.append(Paragraph("2. Datos técnicos del estudio", styles["XSection"]))
 
     t2 = Table([
         ["Tipo de estudio", study.get("tipo_estudio","")],
@@ -214,58 +212,61 @@ story.append(Paragraph("2. Datos técnicos del estudio", styles["XSection"]))
 
     # 🔹 RESULTADOS
     story.append(Spacer(1, 6))
-story.append(Paragraph("3. Resultados espirométricos", styles["XSection"]))
+    story.append(Paragraph("3. Resultados espirométricos", styles["XSection"]))
 
     df = build_values_dataframe(params)
 
     def fmt(x):
-    if x is None or (isinstance(x, float) and pd.isna(x)):
-        return "—"
-    if isinstance(x, (int, float)):
-        return f"{x:.2f}"
-    return str(x)
+        if x is None or (isinstance(x, float) and pd.isna(x)):
+            return "—"
+        if isinstance(x, (int, float)):
+            return f"{x:.2f}"
+        return str(x)
 
-display_df = df.copy()
-for col in display_df.columns:
-    display_df[col] = display_df[col].apply(fmt)
+    display_df = df.copy()
+    for col in display_df.columns:
+        display_df[col] = display_df[col].apply(fmt)
 
     table_data = [display_df.columns.tolist()] + display_df.values.tolist()
 
-    col_widths = [
-    2.5*cm,  # parámetro
-    1.2*cm,  # unidad
-    1.3*cm,  # pre
-    1.5*cm,  # pred
-    1.5*cm,  # %
-    1.3*cm,  # LLN
-    1.2*cm,  # Z pre
-    1.3*cm,  # post
-    1.5*cm,  # % post
-    1.2*cm,  # Z post
-    1.3*cm,  # delta abs
-    1.3*cm,  # delta %
-]
+    col_widths = [2.5*cm,1.2*cm,1.3*cm,1.5*cm,1.5*cm,1.3*cm,1.2*cm,1.3*cm,1.5*cm,1.2*cm,1.3*cm,1.3*cm]
 
     story.append(Table(table_data, repeatRows=1, colWidths=col_widths))
 
     # 🔹 INTERPRETACIÓN
     story.append(Spacer(1, 6))
-story.append(Paragraph("4. Interpretación", styles["XSection"]))
+    story.append(Paragraph("4. Interpretación", styles["XSection"]))
 
     t3 = Table([
-    ["Severidad", interpretation.get("severity","")],
-    ["Respuesta broncodilatadora", interpretation.get("bronchodilator","")],
-    ["Reporte técnico", interpretation.get("technical_report","")],
-    ["Comentario médico", interpretation.get("medical_comment","")],
-], colWidths=[5*cm,13*cm])
+        ["Severidad", interpretation.get("severity","")],
+        ["Respuesta broncodilatadora", interpretation.get("bronchodilator","")],
+        ["Reporte técnico", interpretation.get("technical_report","")],
+        ["Comentario médico", interpretation.get("medical_comment","")],
+    ], colWidths=[5*cm,13*cm])
 
-t3.setStyle(TableStyle([
-    ("GRID",(0,0),(-1,-1),0.3,colors.grey),
-    ("BACKGROUND",(0,0),(0,-1),colors.whitesmoke),
-    ("FONTSIZE",(0,0),(-1,-1),8.5),
-]))
+    t3.setStyle(TableStyle([
+        ("GRID",(0,0),(-1,-1),0.3,colors.grey),
+        ("BACKGROUND",(0,0),(0,-1),colors.whitesmoke),
+        ("FONTSIZE",(0,0),(-1,-1),8.5),
+    ]))
 
-story.append(t3)
+    story.append(t3)
+
+    # 🔹 GRÁFICA
+    story.append(Spacer(1, 6))
+    story.append(Paragraph("5. Resumen gráfico", styles["XSection"]))
+    story.append(RLImage(build_summary_chart(params), width=12*cm, height=6*cm))
+
+    # 🔹 FIRMA
+    story.append(Spacer(1, 30))
+    story.append(Paragraph("<b>Dr. Andrés López Ruiz</b><br/>Médico Pediatra<br/>RM 1082877373", styles["XSmall"]))
+
+    doc.build(story)
+
+    pdf = buffer.getvalue()
+    buffer.close()
+
+    return pdfstory.append(t3)
 
     # 🔹 GRÁFICA
     story.append(Spacer(1, 6))
