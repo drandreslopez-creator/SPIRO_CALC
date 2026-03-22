@@ -1,5 +1,7 @@
 # services/pdf_generator.py
 
+from utils.calculations import fmt_num
+
 import io
 import numpy as np
 import pandas as pd
