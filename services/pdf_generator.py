@@ -132,9 +132,9 @@ def make_pdf(
     attachments: Dict[str, object],
 ) -> bytes:
     styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name="Small", fontSize=8.5, leading=10, alignment=TA_LEFT))
-    styles.add(ParagraphStyle(name="CenterTitle", fontSize=13, leading=15, alignment=TA_CENTER, spaceAfter=8))
-    styles.add(ParagraphStyle(name="Section", fontSize=10.5, leading=12, textColor=colors.HexColor("#1F4E79"), spaceBefore=6, spaceAfter=4))
+    styles.add(ParagraphStyle(name="MySmall", fontSize=8.5, leading=10, alignment=TA_LEFT))
+styles.add(ParagraphStyle(name="MyTitle", fontSize=13, leading=15, alignment=TA_CENTER, spaceAfter=8))
+styles.add(ParagraphStyle(name="MySection", fontSize=10.5, leading=12, textColor=colors.HexColor("#1F4E79"), spaceBefore=6, spaceAfter=4))
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
