@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from utils.calculations import *
+from utils.calculations import 
+
+from services.interpretation import build_interpretation *
 
 import io
 import math
@@ -165,41 +167,6 @@ class ParameterResult:
         return ((self.measured_post - self.measured_pre) / self.measured_pre) * 100
 
 
-def lower_limit_ratio(age_years: Optional[float]) -> float:
-    if age_years is None:
-        return 0.75
-    if age_years < 18:
-        return 0.85
-    if age_years < 40:
-        return 0.75
-    return 0.70
-
-
-def is_below_lln(value: Optional[float], lln: Optional[float], fallback: Optional[float] = None) -> bool:
-    if value is None:
-        return False
-    if lln is not None:
-        return value < lln
-    if fallback is not None:
-        return value < fallback
-    return False
-
-
-def severity_from_percent(pct: Optional[float]) -> str:
-    if pct is None:
-        return "No clasificable"
-    if pct >= 80:
-        return "Leve"
-    if 60 <= pct < 80:
-        return "Moderado"
-    if 40 <= pct < 60:
-        return "Severo"
-    return "Muy severo"
-
-
-def bronchodilator_response(fev1: ParameterResult, fvc: ParameterResult, age_years: Optional[float]) -> Tuple[str, str]:
-    notes: List[str] = []
-
     def eval_param(param: ParameterResult, label: str) -> Tuple[bool, Optional[float], Optional[float]]:
         delta_abs = param.delta_abs
         delta_pct = param.delta_pct_baseline
@@ -222,13 +189,6 @@ def bronchodilator_response(fev1: ParameterResult, fvc: ParameterResult, age_yea
     if pos_fev1 or pos_fvc:
         return "Significativa", " ".join(notes)
     return "No significativa", "Sin cambios relevantes tras administración de broncodilatador."
-
-
-def build_interpretation(age_years: Optional[float], params: Dict[str, ParameterResult], quality_text: str) -> Dict[str, str]:
-    fev1 = params["FEV1"]
-    fvc = params["FVC"]
-    ratio = params["FEV1/FVC"]
-    fef2575 = params.get("FEF25-75")
 
     ratio_cutoff = lower_limit_ratio(age_years)
     ratio_low = is_below_lln(ratio.measured_pre, ratio.lln, ratio_cutoff)
