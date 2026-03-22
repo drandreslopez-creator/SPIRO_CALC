@@ -44,3 +44,78 @@ def build_interpretation(age_years: Optional[float], params: Dict[str, Parameter
     fvc = params["FVC"]
     ratio = params["FEV1/FVC"]
     fef2575 = params.get("FEF25-75")
+
+
+def eval_param(param: ParameterResult, label: str) -> Tuple[bool, Optional[float], Optional[float]]:
+        delta_abs = param.delta_abs
+        delta_pct = param.delta_pct_baseline
+        if delta_abs is None or delta_pct is None:
+            return False, delta_abs, delta_pct
+        delta_abs_ml = delta_abs * 1000 if param.unit.lower() == "l" else delta_abs
+        classic = delta_pct >= 12 and delta_abs_ml >= 200
+        pediatric_support = age_years is not None and age_years < 18 and delta_pct >= 12
+        positive = classic or pediatric_support
+        if positive:
+            if classic:
+                notes.append(f"Respuesta significativa en {label} (Δ {delta_pct:.1f}% y {delta_abs_ml:.0f} mL).")
+            else:
+                notes.append(f"Respuesta sugestiva en {label} para contexto pediátrico (Δ {delta_pct:.1f}%).")
+        return positive, delta_abs_ml, delta_pct
+
+    pos_fev1, _, _ = eval_param(fev1, "FEV1")
+    pos_fvc, _, _ = eval_param(fvc, "FVC")
+
+    if pos_fev1 or pos_fvc:
+        return "Significativa", " ".join(notes)
+    return "No significativa", "Sin cambios relevantes tras administración de broncodilatador."
+
+    ratio_cutoff = lower_limit_ratio(age_years)
+    ratio_low = is_below_lln(ratio.measured_pre, ratio.lln, ratio_cutoff)
+    fvc_low = is_below_lln(fvc.measured_pre, fvc.lln) or ((fvc.pct_pred_pre or 999) < 80)
+    fev1_low = is_below_lln(fev1.measured_pre, fev1.lln) or ((fev1.pct_pred_pre or 999) < 80)
+
+    pattern = "Espirometría dentro de límites normales"
+    severity = "No aplica"
+    comments: List[str] = []
+
+    if ratio_low and not fvc_low:
+        pattern = "Patrón ventilatorio obstructivo"
+        severity = severity_from_percent(fev1.pct_pred_pre)
+        comments.append("Relación FEV1/FVC disminuida, compatible con obstrucción al flujo aéreo.")
+    elif not ratio_low and fvc_low:
+        pattern = "Patrón restrictivo probable"
+        severity = severity_from_percent(fvc.pct_pred_pre)
+        comments.append("FVC disminuida con relación FEV1/FVC conservada; considerar correlación clínica y, si aplica, confirmación con volúmenes pulmonares.")
+    elif ratio_low and fvc_low:
+        pattern = "Patrón ventilatorio mixto"
+        severity = severity_from_percent(min(filter(lambda x: x is not None, [fev1.pct_pred_pre, fvc.pct_pred_pre]), default=None))
+        comments.append("Relación FEV1/FVC y FVC disminuidas, compatible con patrón mixto.")
+    else:
+        comments.append("No se identifican alteraciones obstructivas o restrictivas evidentes en los parámetros reportados.")
+
+    if fef2575 and fef2575.pct_pred_pre is not None and fef2575.pct_pred_pre < 65:
+        comments.append("Flujos de vías aéreas medias disminuidos (FEF25-75 reducido).")
+
+    broncho_status = "No realizado"
+    broncho_note = "No se realizó medición post broncodilatador."
+    if fev1.measured_post is not None or fvc.measured_post is not None:
+        broncho_status, broncho_note = bronchodilator_response(fev1, fvc, age_years)
+
+    technical_lines = [quality_text.strip()] if quality_text.strip() else []
+    technical_lines.append(pattern)
+    if severity != "No aplica":
+        technical_lines.append(f"Severidad funcional: {severity}.")
+    if broncho_status != "No realizado":
+        technical_lines.append(f"Respuesta broncodilatadora: {broncho_status.lower()}.")
+
+    technical_report = " ".join(technical_lines)
+    medical_comment = " ".join(comments + [broncho_note])
+
+    return {
+        "pattern": pattern,
+        "result": pattern,
+        "severity": severity,
+        "bronchodilator": broncho_status,
+        "technical_report": technical_report,
+        "medical_comment": medical_comment,
+    }
