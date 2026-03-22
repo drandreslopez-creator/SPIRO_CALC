@@ -169,9 +169,12 @@ def make_pdf(patient, study, params, interpretation, attachments):
 ]))
 
         story.append(header)
-        story.append(Spacer(1, 20))
 
-    story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["XTitle"]))
+# 🔥 DOBLE ESPACIO REAL
+story.append(Spacer(1, 12))
+story.append(Spacer(1, 12))
+
+story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["XTitle"]))
 
     now = datetime.now(ZoneInfo("America/Bogota"))
     story.append(Paragraph(f"Fecha de generación: {now.strftime('%d/%m/%Y %H:%M')}", styles["XSmall"]))
