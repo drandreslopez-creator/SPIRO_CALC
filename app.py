@@ -5,7 +5,7 @@ from utils.calculations import *
 from services.interpretation import build_interpretation
 from services.pdf_generator import make_pdf, build_values_dataframe, build_summary_chart
 
-# Librerías necesarias para la app
+# Librerías necesarias
 import tempfile
 import zipfile
 from dataclasses import dataclass
