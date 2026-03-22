@@ -1,7 +1,5 @@
 # services/pdf_generator.py
 
-from reportlab.platypus import PageBreak
-
 from utils.calculations import fmt_num
 
 import io
@@ -292,3 +290,10 @@ def make_pdf(patient, study, params, interpretation, attachments):
         "<b>Dr. Andrés López Ruiz</b><br/>Médico Pediatra<br/>RM 1082877373",
         styles["XSmall"]
     ))
+
+    doc.build(story)
+
+    pdf = buffer.getvalue()
+    buffer.close()
+
+    return pdf
