@@ -152,7 +152,14 @@ def make_pdf(
 
     # TABLA
     df = build_values_dataframe(params)
-    table_data = [df.columns.tolist()] + df.fillna("").values.tolist()
+
+# FORMATEAR BIEN LOS DATOS
+df = df.fillna("")
+
+for col in df.columns:
+    df[col] = df[col].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x)
+
+table_data = [df.columns.tolist()] + df.values.tolist()
 
     table = Table(table_data)
     table.setStyle(TableStyle([
