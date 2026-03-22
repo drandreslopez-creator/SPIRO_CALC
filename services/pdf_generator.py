@@ -148,19 +148,27 @@ def make_pdf(patient, study, params, interpretation, attachments):
     # HEADER
     if LOGO_PATH.exists():
         header = Table(
-            [[
-                RLImage(str(LOGO_PATH), width=2.7 * cm, height=2.7 * cm),
-                Paragraph(
-                    "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
-                    "Médico Especialista en Pediatría<br/>"
-                    "Calle 11 No. 10 - 83 Consultorio 301<br/>"
-                    "Edificio Centro Empresarial El Parque<br/>"
-                    "Sogamoso, Boyacá · Tel. 3004270647",
-                    styles["XSmall"],
-                )
-            ]],
-            colWidths=[3.2 * cm, 14.6 * cm]
+    [[
+        RLImage(str(LOGO_PATH), width=2.5 * cm, height=2.5 * cm),
+        Paragraph(
+            "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
+            "Médico Especialista en Pediatría<br/>"
+            "Calle 11 No. 10 - 83 Consultorio 301<br/>"
+            "Edificio Centro Empresarial El Parque<br/>"
+            "Sogamoso, Boyacá · Tel. 3004270647",
+            styles["XSmall"],
         )
+    ]],
+    colWidths=[3*cm, 15*cm]
+)
+
+header.setStyle(TableStyle([
+    ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+    ("LEFTPADDING", (0,0), (-1,-1), 0),
+    ("RIGHTPADDING", (0,0), (-1,-1), 0),
+    ("TOPPADDING", (0,0), (-1,-1), 0),
+    ("BOTTOMPADDING", (0,0), (-1,-1), 0),
+]))
 
         story.append(header)
         story.append(Spacer(1, 6))
