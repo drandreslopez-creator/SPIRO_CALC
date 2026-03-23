@@ -297,14 +297,14 @@ def make_pdf(patient, study, params, interpretation, attachments):
     if attachments.get("curve_image_1"):
         story.append(Spacer(1, 10))
         story.append(Paragraph("Curva flujo-volumen", styles["XSmall"]))
-        img1 = render_image(attachments["curve_image_1"])
+        img1 = render_image(attachments["curve_image_1"]), max_width_cm=7)
         if img1:
             story.append(img1)
 
     if attachments.get("curve_image_2"):
         story.append(Spacer(1, 10))
         story.append(Paragraph("Curva volumen-tiempo", styles["XSmall"]))
-        img2 = render_image(attachments["curve_image_2"])
+        img2 = render_image(attachments["curve_image_2"]), max_width_cm=7)
         if img2:
             story.append(img2)
 
