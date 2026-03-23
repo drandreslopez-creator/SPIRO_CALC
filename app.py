@@ -185,11 +185,20 @@ with st.form("spirometry_form"):
     eps = c3.text_input("EPS")
 
     c4, c5, c6 = st.columns(3)
-    fecha_nacimiento = c4.date_input("Fecha de nacimiento", value=None, min_value=date(1900,1,1), max_value=date.today(), format="DD/MM/YYYY")
-    sexo = c5.selectbox("Sexo", ["", "Femenino", "Masculino", "Otro"])
+
+fecha_nacimiento = c4.date_input(
+    "Fecha de nacimiento",
+    value=None,
+    min_value=date(1900,1,1),
+    max_value=date.today(),
+    format="DD/MM/YYYY"
+)
+
+sexo = c5.selectbox("Sexo", ["", "Femenino", "Masculino", "Otro"])
+
 remitente = c6.text_input("Médico remitente")
 
-# 🔥 NUEVO BLOQUE BIEN UBICADO
+# 🔥 NUEVO BLOQUE BIEN UBICADO (DENTRO DEL FORM)
 c_etnia, c_tabaco = st.columns(2)
 
 etnia = c_etnia.selectbox(
@@ -201,8 +210,6 @@ fumador = c_tabaco.selectbox(
     "Tabaquismo",
     ["", "No fumador", "Exfumador", "Fumador activo"]
 )
-
-    remitente = c6.text_input("Médico remitente")
 
     c7, c8, c9, c10 = st.columns(4)
     peso = c7.number_input("Peso (kg)", min_value=0.0, step=0.1, value=None, placeholder="Ej. 18.5")
