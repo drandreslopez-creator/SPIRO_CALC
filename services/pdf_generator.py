@@ -25,7 +25,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.lib.enums import TA_LEFT, TA_CENTER
+from reportlab.lib.enums import TA_JUSTIFY
 
 from PIL import Image
 
@@ -105,23 +105,34 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     styles = getSampleStyleSheet()
 
-    styles.add(ParagraphStyle(name="XSmall", fontSize=8.5, leading=10, alignment=TA_LEFT))
-    styles.add(ParagraphStyle(
-        name="XTitle",
-        fontSize=12,
-        leading=15,
-        alignment=TA_CENTER,
-        spaceBefore=12,
-        spaceAfter=8
-    ))
-    styles.add(ParagraphStyle(
-        name="XSection",
-        fontSize=10.5,
-        leading=12,
-        textColor=colors.HexColor("#1F4E79"),
-        spaceBefore=6,
-        spaceAfter=4
-    ))
+# 🔥 ESTILO JUSTIFICADO (AQUÍ)
+styles.add(ParagraphStyle(
+    name="Justify",
+    fontSize=9,
+    leading=12,
+    alignment=TA_JUSTIFY
+))
+
+# Estilos que ya tenías
+styles.add(ParagraphStyle(name="XSmall", fontSize=8.5, leading=10, alignment=TA_LEFT))
+
+styles.add(ParagraphStyle(
+    name="XTitle",
+    fontSize=12,
+    leading=15,
+    alignment=TA_CENTER,
+    spaceBefore=12,
+    spaceAfter=8
+))
+
+styles.add(ParagraphStyle(
+    name="XSection",
+    fontSize=10.5,
+    leading=12,
+    textColor=colors.HexColor("#1F4E79"),
+    spaceBefore=6,
+    spaceAfter=4
+))
 
     buffer = io.BytesIO()
 
@@ -248,8 +259,8 @@ def make_pdf(patient, study, params, interpretation, attachments):
     t3 = Table([
         ["Severidad", interpretation.get("severity","")],
         ["Respuesta broncodilatadora", interpretation.get("bronchodilator","")],
-        ["Reporte técnico", interpretation.get("technical_report","")],
-        ["Comentario médico", interpretation.get("medical_comment","")],
+        ["Reporte técnico", Paragraph(interpretation.get("technical_report",""), styles["Justify"])],
+        ["Comentario médico", Paragraph(interpretation.get("medical_comment",""), styles["Justify"])],
     ], colWidths=[5*cm,13*cm])
 
     t3.setStyle(TableStyle([
