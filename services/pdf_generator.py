@@ -1,204 +1,124 @@
-# services/pdf_generator.py
+# services/interpretation.py
 
-from utils.calculations import fmt_num
-
-import io
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-
-from typing import Dict, Any
-from pathlib import Path
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
-from reportlab.platypus import (
-    Image as RLImage,
-    Paragraph,
-    SimpleDocTemplate,
-    Spacer,
-    Table,
-    TableStyle,
-    PageBreak
-)
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import cm
-from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT, TA_CENTER
-
-from PIL import Image
+from typing import Dict, List, Optional, Tuple
+from services.spirometry_logic import ParameterResult
 
 
-# LOGO
-APP_DIR = Path(__file__).resolve().parent.parent
-LOGO_PATH = APP_DIR / "logo.png"
+def lower_limit_ratio(age_years: Optional[float]) -> float:
+    if age_years is None:
+        return 0.75
+    if age_years < 18:
+        return 0.85
+    if age_years < 40:
+        return 0.75
+    return 0.70
 
 
-# ----------------------------
-# GRÁFICA
-# ----------------------------
-def build_summary_chart(params: Dict[str, Any]) -> io.BytesIO:
-    labels = ["FVC", "FEV1", "FEV1/FVC", "PEF", "FEF25-75"]
-    pre = [params[k].pct_pred_pre if k in params else None for k in labels]
-    post = [params[k].pct_pred_post if k in params else None for k in labels]
-
-    x = np.arange(len(labels))
-    width = 0.36
-
-    fig, ax = plt.subplots(figsize=(8, 4))
-
-    pre_vals = [0 if v is None else v for v in pre]
-    post_vals = [0 if v is None else v for v in post]
-
-    ax.bar(x - width / 2, pre_vals, width, label="Pre")
-
-    if any(v is not None for v in post):
-        ax.bar(x + width / 2, post_vals, width, label="Post")
-
-    ax.axhline(80, linestyle="--", linewidth=1)
-    ax.set_ylabel("% del predicho")
-    ax.set_title("Resumen espirométrico")
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels)
-    ax.legend()
-
-    fig.tight_layout()
-
-    buffer = io.BytesIO()
-    fig.savefig(buffer, format="png", dpi=200)
-    buffer.seek(0)
-    plt.close(fig)
-
-    return buffer
+def is_below_lln(value: Optional[float], lln: Optional[float], fallback: Optional[float] = None) -> bool:
+    if value is None:
+        return False
+    if lln is not None:
+        return value < lln
+    if fallback is not None:
+        return value < fallback
+    return False
 
 
-# ----------------------------
-# TABLA
-# ----------------------------
-def build_values_dataframe(params: Dict[str, Any]) -> pd.DataFrame:
-    rows = []
-
-    for p in params.values():
-        rows.append({
-            "Parámetro": p.name,
-            "Unidad": p.unit,
-            "Pre": p.measured_pre,
-            "Predicho": p.predicted,
-            "%Pred Pre": p.pct_pred_pre,
-            "LLN": p.lln,
-            "Z Pre": p.zscore_pre,
-            "Post": p.measured_post,
-            "%Pred Post": p.pct_pred_post,
-            "Z Post": p.zscore_post,
-            "Δ Abs": p.delta_abs,
-            "Δ %": p.delta_pct_baseline,
-        })
-
-    return pd.DataFrame(rows)
+def severity_from_percent(pct: Optional[float]) -> str:
+    if pct is None:
+        return "No clasificable"
+    if pct >= 80:
+        return "Leve"
+    if 60 <= pct < 80:
+        return "Moderado"
+    if 40 <= pct < 60:
+        return "Severo"
+    return "Muy severo"
 
 
-# ----------------------------
-# PDF PRINCIPAL
-# ----------------------------
-def make_pdf(patient, study, params, interpretation, attachments):
+def bronchodilator_response(
+    fev1: ParameterResult,
+    fvc: ParameterResult,
+    age_years: Optional[float]
+) -> Tuple[str, str]:
 
-    styles = getSampleStyleSheet()
+    notes: List[str] = []
 
-    # 🔥 ESTILO JUSTIFICADO
-    styles.add(ParagraphStyle(
-        name="Justify",
-        fontSize=9,
-        leading=12,
-        alignment=TA_JUSTIFY
-    ))
+    def eval_param(param: ParameterResult, label: str):
+        delta_abs = param.delta_abs
+        delta_pct = param.delta_pct_baseline
 
-    styles.add(ParagraphStyle(name="XSmall", fontSize=8.5, leading=10, alignment=TA_LEFT))
+        if delta_abs is None or delta_pct is None:
+            return False, delta_abs, delta_pct
 
-    styles.add(ParagraphStyle(
-        name="XTitle",
-        fontSize=12,
-        leading=15,
-        alignment=TA_CENTER,
-        spaceBefore=12,
-        spaceAfter=8
-    ))
+        delta_abs_ml = delta_abs * 1000 if param.unit.lower() == "l" else delta_abs
+        classic = delta_pct >= 12 and delta_abs_ml >= 200
+        pediatric_support = age_years is not None and age_years < 18 and delta_pct >= 12
 
-    styles.add(ParagraphStyle(
-        name="XSection",
-        fontSize=10.5,
-        leading=12,
-        textColor=colors.HexColor("#1F4E79"),
-        spaceBefore=6,
-        spaceAfter=4
-    ))
+        positive = classic or pediatric_support
 
-    buffer = io.BytesIO()
+        if positive:
+            if classic:
+                notes.append(f"Respuesta significativa en {label} (Δ {delta_pct:.1f}% y {delta_abs_ml:.0f} mL).")
+            else:
+                notes.append(f"Respuesta sugestiva en {label} para contexto pediátrico (Δ {delta_pct:.1f}%).")
 
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        rightMargin=1.2 * cm,
-        leftMargin=1.2 * cm,
-        topMargin=1.0 * cm,
-        bottomMargin=1.0 * cm,
-    )
+        return positive, delta_abs_ml, delta_pct
 
-    story = []
+    pos_fev1, _, _ = eval_param(fev1, "FEV1")
+    pos_fvc, _, _ = eval_param(fvc, "FVC")
 
-    # ---------------- HEADER ----------------
-    if LOGO_PATH.exists():
-        header = Table(
-            [[
-                RLImage(str(LOGO_PATH), width=2.4 * cm, height=2.4 * cm),
-                Paragraph(
-                    "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
-                    "Médico Especialista en Pediatría<br/>"
-                    "Calle 11 No. 10 - 83 Consultorio 301<br/>"
-                    "Edificio Centro Empresarial El Parque<br/>"
-                    "Sogamoso, Boyacá · Tel. 3004270647",
-                    styles["XSmall"],
-                )
-            ]],
-            colWidths=[2.8 * cm, 14.2 * cm]
-        )
+    if pos_fev1 or pos_fvc:
+        return "Significativa", " ".join(notes)
 
-        header.setStyle(TableStyle([
-            ("VALIGN", (0,0), (-1,-1), "TOP"),
-            ("TOPPADDING", (0,0), (0,0), -10),
-        ]))
+    return "No significativa", "Sin cambios relevantes tras administración de broncodilatador."
 
-        story.append(header)
 
-    story.append(Spacer(1, 12))
+def build_interpretation(
+    age_years: Optional[float],
+    params: Dict[str, ParameterResult],
+    quality_text: str
+) -> Dict[str, str]:
 
-    story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["XTitle"]))
+    fev1 = params["FEV1"]
+    fvc = params["FVC"]
+    ratio = params["FEV1/FVC"]
+    fef2575 = params.get("FEF25-75")
 
-    now = datetime.now(ZoneInfo("America/Bogota"))
-    story.append(Paragraph(f"Fecha de generación: {now.strftime('%d/%m/%Y %H:%M')}", styles["XSmall"]))
+    ratio_cutoff = lower_limit_ratio(age_years)
+    ratio_low = is_below_lln(ratio.measured_pre, ratio.lln, ratio_cutoff)
+    fvc_low = is_below_lln(fvc.measured_pre, fvc.lln) or ((fvc.pct_pred_pre or 999) < 80)
 
-    # ---------------- INTERPRETACIÓN ----------------
-    story.append(Spacer(1, 10))
-    story.append(Paragraph("4. Interpretación", styles["XSection"]))
+    pattern = "Espirometría dentro de límites normales"
+    severity = "No aplica"
+    comments: List[str] = []
 
-    t3 = Table([
-        ["Severidad", interpretation.get("severity","")],
-        ["Respuesta broncodilatadora", interpretation.get("bronchodilator","")],
-        ["Reporte técnico", Paragraph(interpretation.get("technical_report",""), styles["Justify"])],
-        ["Comentario médico", Paragraph(interpretation.get("medical_comment",""), styles["Justify"])],
-    ], colWidths=[5*cm,13*cm])
+    if ratio_low and not fvc_low:
+        pattern = "Patrón ventilatorio obstructivo"
+        severity = severity_from_percent(fev1.pct_pred_pre)
+        comments.append("Relación FEV1/FVC disminuida, compatible con obstrucción al flujo aéreo.")
+    elif not ratio_low and fvc_low:
+        pattern = "Patrón restrictivo probable"
+        severity = severity_from_percent(fvc.pct_pred_pre)
+        comments.append("FVC disminuida con relación FEV1/FVC conservada.")
+    elif ratio_low and fvc_low:
+        pattern = "Patrón ventilatorio mixto"
+        comments.append("Patrón mixto.")
 
-    t3.setStyle(TableStyle([
-        ("GRID",(0,0),(-1,-1),0.3,colors.grey),
-        ("BACKGROUND",(0,0),(0,-1),colors.whitesmoke),
-        ("VALIGN",(0,0),(-1,-1),"TOP"),
-    ]))
+    broncho_status = "No realizado"
+    broncho_note = "No se realizó medición post broncodilatador."
 
-    story.append(t3)
+    if fev1.measured_post is not None or fvc.measured_post is not None:
+        broncho_status, broncho_note = bronchodilator_response(fev1, fvc, age_years)
 
-    doc.build(story)
+    technical_report = pattern
+    medical_comment = " ".join(comments + [broncho_note])
 
-    pdf = buffer.getvalue()
-    buffer.close()
-
-    return pdf
+    return {
+        "pattern": pattern,
+        "result": pattern,
+        "severity": severity,
+        "bronchodilator": broncho_status,
+        "technical_report": technical_report,
+        "medical_comment": medical_comment,
+    }
