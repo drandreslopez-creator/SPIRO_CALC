@@ -179,6 +179,7 @@ st.write("Ingrese los datos del paciente, los parámetros espirométricos y los 
 # ----------------------------
 with st.form("spirometry_form"):
     st.subheader("Datos del paciente")
+
     c1, c2, c3 = st.columns(3)
     nombre = c1.text_input("Nombre completo")
     identificacion = c2.text_input("Documento")
@@ -186,32 +187,34 @@ with st.form("spirometry_form"):
 
     c4, c5, c6 = st.columns(3)
 
-fecha_nacimiento = c4.date_input(
-    "Fecha de nacimiento",
-    value=None,
-    min_value=date(1900,1,1),
-    max_value=date.today(),
-    format="DD/MM/YYYY"
-)
+    fecha_nacimiento = c4.date_input(
+        "Fecha de nacimiento",
+        value=None,
+        min_value=date(1900,1,1),
+        max_value=date.today(),
+        format="DD/MM/YYYY"
+    )
 
-sexo = c5.selectbox("Sexo", ["", "Femenino", "Masculino", "Otro"])
+    sexo = c5.selectbox("Sexo", ["", "Femenino", "Masculino", "Otro"])
 
-remitente = c6.text_input("Médico remitente")
+    remitente = c6.text_input("Médico remitente")
 
-# 🔥 NUEVO BLOQUE BIEN UBICADO (DENTRO DEL FORM)
-c_etnia, c_tabaco = st.columns(2)
+    # 🔥 NUEVO BLOQUE BIEN INDENTADO
+    c_etnia, c_tabaco = st.columns(2)
 
-etnia = c_etnia.selectbox(
-    "Etnia",
-    ["", "Mestizo", "Afrodescendiente", "Indígena", "Blanco", "Otro"]
-)
+    etnia = c_etnia.selectbox(
+        "Etnia",
+        ["", "Mestizo", "Afrodescendiente", "Indígena", "Blanco", "Otro"]
+    )
 
-fumador = c_tabaco.selectbox(
-    "Tabaquismo",
-    ["", "No fumador", "Exfumador", "Fumador activo"]
-)
+    fumador = c_tabaco.selectbox(
+        "Tabaquismo",
+        ["", "No fumador", "Exfumador", "Fumador activo"]
+    )
 
+    # 🔥 ESTO TAMBIÉN DEBE ESTAR DENTRO
     c7, c8, c9, c10 = st.columns(4)
+
     peso = c7.number_input("Peso (kg)", min_value=0.0, step=0.1, value=None, placeholder="Ej. 18.5")
     talla = c8.number_input("Talla (cm)", min_value=0.0, step=0.1, value=None, placeholder="Ej. 108")
     fecha_estudio = c9.date_input("Fecha del estudio", value=date.today(), min_value=date(1900,1,1), max_value=date.today(), format="DD/MM/YYYY")
