@@ -111,7 +111,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
         fontSize=12,
         leading=15,
         alignment=TA_CENTER,
-        spaceBefore=30,
+        spaceBefore=10,
         spaceAfter=8
     ))
     styles.add(ParagraphStyle(
@@ -161,8 +161,8 @@ def make_pdf(patient, study, params, interpretation, attachments):
         story.append(header)
 
     # Espacio + título
-    story.append(Spacer(1, 8))
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 12))
+    story.append(Spacer(1, 12))
 
     story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["XTitle"]))
 
