@@ -297,7 +297,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
     if attachments.get("curve_image_1"):
         story.append(Spacer(1, 10))
         story.append(Paragraph("Curva flujo-volumen", styles["XSmall"]))
-        img1 = render_image(attachments["curve_image_1"]), max_width_cm=7)
+        img1 = render_image(attachments["curve_image_1"], max_width_cm=7)
         if img1:
             story.append(img1)
 
