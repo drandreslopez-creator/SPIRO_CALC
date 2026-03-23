@@ -108,8 +108,8 @@ def make_pdf(patient, study, params, interpretation, attachments):
     # 🔥 ESTILO JUSTIFICADO (CORREGIDO)
     styles.add(ParagraphStyle(
         name="Justify",
-        fontSize=9,
-        leading=12,
+        fontSize=8.6,
+        leading=10,
         alignment=TA_JUSTIFY
     ))
 
@@ -261,11 +261,11 @@ def make_pdf(patient, study, params, interpretation, attachments):
     story.append(Paragraph("4. Interpretación", styles["XSection"]))
 
     t3 = Table([
-        ["Severidad", interpretation.get("severity","")],
-        ["Respuesta broncodilatadora", interpretation.get("bronchodilator","")],
-        ["Reporte técnico", Paragraph(interpretation.get("technical_report",""), styles["Justify"])],
-        ["Comentario médico", Paragraph(interpretation.get("medical_comment",""), styles["Justify"])],
-    ], colWidths=[5*cm,13*cm])
+    ["Severidad", Paragraph(interpretation.get("severity",""), styles["XSmall"])],
+    ["Respuesta broncodilatadora", Paragraph(interpretation.get("bronchodilator",""), styles["XSmall"])],
+    ["Reporte técnico", Paragraph(interpretation.get("technical_report",""), styles["Justify"])],
+    ["Comentario médico", Paragraph(interpretation.get("medical_comment",""), styles["Justify"])],
+], colWidths=[5*cm,13*cm])
 
     t3.setStyle(TableStyle([
         ("GRID",(0,0),(-1,-1),0.3,colors.grey),
