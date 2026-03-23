@@ -132,10 +132,10 @@ def make_pdf(patient, study, params, interpretation, attachments):
     styles.add(ParagraphStyle(name="XSmall", fontSize=8.5, leading=10, alignment=TA_LEFT))
     styles.add(ParagraphStyle(
     name="XTitle",
-    fontSize=13,
+    fontSize=12,
     leading=15,
     alignment=TA_CENTER,
-    spaceBefore=50,   # 🔥 AQUÍ está la clave
+    spaceBefore=20,   # 🔥 AQUÍ está la clave
     spaceAfter=8
 ))
     styles.add(ParagraphStyle(name="XSection", fontSize=10.5, leading=12, textColor=colors.HexColor("#1F4E79"), spaceBefore=6, spaceAfter=4))
