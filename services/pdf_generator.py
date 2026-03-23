@@ -25,7 +25,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.lib.enums import TA_LEFT, TA_CENTER
+from reportlab.lib.enums import TA_JUSTIFY
 
 from PIL import Image
 
@@ -110,7 +110,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
         name="XTitle",
         fontSize=12,
         leading=15,
-        alignment=TA_CENTER,
+        alignment=TA_JUSTIFY,
         spaceBefore=12,
         spaceAfter=8
     ))
