@@ -100,7 +100,7 @@ def build_values_dataframe(params: Dict[str, Any]) -> pd.DataFrame:
 
 
 # ----------------------------
-# IMÁGENES (CORREGIDO)
+# IMÁGENES
 # ----------------------------
 def render_image(uploaded_file, max_width_cm=10):
     if uploaded_file is None:
@@ -220,7 +220,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     story.append(t)
 
-    # ---------------- DATOS TÉCNICOS ----------------
+    # ---------------- DATOS ----------------
     story.append(Spacer(1, 6))
     story.append(Paragraph("2. Datos técnicos del estudio", styles["XSection"]))
 
@@ -294,6 +294,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     story.append(RLImage(build_summary_chart(params), width=14*cm, height=7*cm))
 
+    # 🔥 IMÁGENES CORREGIDAS
     if attachments.get("curve_image_1"):
         story.append(Spacer(1, 10))
         story.append(Paragraph("Curva flujo-volumen", styles["XSmall"]))
@@ -304,7 +305,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
     if attachments.get("curve_image_2"):
         story.append(Spacer(1, 10))
         story.append(Paragraph("Curva volumen-tiempo", styles["XSmall"]))
-        img2 = render_image(attachments["curve_image_2"]), max_width_cm=7)
+        img2 = render_image(attachments["curve_image_2"], max_width_cm=7)
         if img2:
             story.append(img2)
 
