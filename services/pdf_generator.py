@@ -155,33 +155,33 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
         # HEADER
     if LOGO_PATH.exists():
-        header = Table(
-            [[
-                RLImage(str(LOGO_PATH), width=2.4 * cm, height=2.4 * cm),
-                Paragraph(
-                    "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
-                    "Médico Especialista en Pediatría<br/>"
-                    "Calle 11 No. 10 - 83 Consultorio 301<br/>"
-                    "Edificio Centro Empresarial El Parque<br/>"
-                    "Sogamoso, Boyacá · Tel. 3004270647",
-                    styles["XSmall"],
-                )
-            ]],
-            colWidths=[2.8 * cm, 14.2 * cm]
-        )
+    header = Table(
+        [[
+            RLImage(str(LOGO_PATH), width=2.4 * cm, height=2.4 * cm),
+            Paragraph(
+                "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
+                "Médico Especialista en Pediatría<br/>"
+                "Calle 11 No. 10 - 83 Consultorio 301<br/>"
+                "Edificio Centro Empresarial El Parque<br/>"
+                "Sogamoso, Boyacá · Tel. 3004270647",
+                styles["XSmall"],
+            )
+        ]],
+        colWidths=[2.8 * cm, 14.2 * cm]
+    )
 
-        header.setStyle(TableStyle([
-            ("VALIGN", (0,0), (-1,-1), "TOP"),
-            ("TOPPADDING", (0,0), (0,0), -17),
-        ]))
+    header.setStyle(TableStyle([
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("TOPPADDING", (0,0), (0,0), -17),
+    ]))
 
-                story.append(header)
+        story.append(header)
 
-        # 🔥 DOBLE ESPACIO REAL
-        story.append(Spacer(1, 12))
-        story.append(Spacer(1, 12))
+    # 🔥 DOBLE ESPACIO REAL
+    story.append(Spacer(1, 12))
+    story.append(Spacer(1, 12))
 
-        story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["XTitle"]))
+    story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["XTitle"]))
 
     now = datetime.now(ZoneInfo("America/Bogota"))
     story.append(Paragraph(f"Fecha de generación: {now.strftime('%d/%m/%Y %H:%M')}", styles["XSmall"]))
