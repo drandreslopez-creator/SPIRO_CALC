@@ -74,11 +74,7 @@ def bronchodilator_response(
     return "No significativa", "Sin cambios relevantes tras administración de broncodilatador."
 
 
-def build_interpretation(
-    age_years: Optional[float],
-    params: Dict[str, ParameterResult],
-    quality_text: str
-) -> Dict[str, str]:
+def build_interpretation(age_years, params, quality_text, fumador=None):
 
     fev1 = params["FEV1"]
     fvc = params["FVC"]
@@ -86,32 +82,68 @@ def build_interpretation(
     fef2575 = params.get("FEF25-75")
 
     ratio_cutoff = lower_limit_ratio(age_years)
+
     ratio_low = is_below_lln(ratio.measured_pre, ratio.lln, ratio_cutoff)
     fvc_low = is_below_lln(fvc.measured_pre, fvc.lln) or ((fvc.pct_pred_pre or 999) < 80)
+    fev1_low = is_below_lln(fev1.measured_pre, fev1.lln) or ((fev1.pct_pred_pre or 999) < 80)
 
     pattern = "Espirometría dentro de límites normales"
     severity = "No aplica"
-    comments: List[str] = []
+    comments = []
 
+    # ---------------- PATRÓN ----------------
     if ratio_low and not fvc_low:
         pattern = "Patrón ventilatorio obstructivo"
         severity = severity_from_percent(fev1.pct_pred_pre)
         comments.append("Relación FEV1/FVC disminuida, compatible con obstrucción al flujo aéreo.")
+
     elif not ratio_low and fvc_low:
         pattern = "Patrón restrictivo probable"
         severity = severity_from_percent(fvc.pct_pred_pre)
         comments.append("FVC disminuida con relación FEV1/FVC conservada.")
+
     elif ratio_low and fvc_low:
         pattern = "Patrón ventilatorio mixto"
-        comments.append("Patrón mixto.")
+        severity = severity_from_percent(
+            min(filter(lambda x: x is not None, [fev1.pct_pred_pre, fvc.pct_pred_pre]), default=None)
+        )
+        comments.append("Disminución simultánea de FEV1/FVC y FVC.")
 
+    else:
+        comments.append("No se evidencian alteraciones ventilatorias significativas.")
+
+    # ---------------- PEQUEÑAS VÍAS ----------------
+    if fef2575 and fef2575.pct_pred_pre is not None and fef2575.pct_pred_pre < 65:
+        comments.append("Disminución de flujos de vías aéreas pequeñas (FEF25-75 reducido).")
+
+    # ---------------- BRONCODILATADOR ----------------
     broncho_status = "No realizado"
-    broncho_note = "No se realizó medición post broncodilatador."
+    broncho_note = "No se realizó prueba broncodilatadora."
 
     if fev1.measured_post is not None or fvc.measured_post is not None:
         broncho_status, broncho_note = bronchodilator_response(fev1, fvc, age_years)
 
-    technical_report = pattern
+    # ---------------- CONTEXTO CLÍNICO (🔥 NUEVO) ----------------
+    if fumador == "Fumador activo":
+        if ratio_low:
+            comments.append("Hallazgos compatibles con posible enfermedad pulmonar obstructiva crónica (EPOC) en contexto de tabaquismo.")
+        else:
+            comments.append("Antecedente de tabaquismo, se recomienda seguimiento funcional periódico.")
+
+    if fumador == "Exfumador":
+        comments.append("Antecedente de tabaquismo, considerar riesgo residual de enfermedad obstructiva.")
+
+    # ---------------- TEXTO FINAL ----------------
+    technical_lines = [quality_text.strip()] if quality_text.strip() else []
+    technical_lines.append(pattern)
+
+    if severity != "No aplica":
+        technical_lines.append(f"Severidad funcional: {severity}.")
+
+    if broncho_status != "No realizado":
+        technical_lines.append(f"Respuesta broncodilatadora: {broncho_status.lower()}.")
+
+    technical_report = " ".join(technical_lines)
     medical_comment = " ".join(comments + [broncho_note])
 
     return {
