@@ -101,6 +101,23 @@ def build_values_dataframe(params: Dict[str, Any]) -> pd.DataFrame:
 # ----------------------------
 # PDF PRINCIPAL
 # ----------------------------
+def render_image(uploaded_file, max_width_cm=14):
+    if uploaded_file is None:
+        return None
+
+    uploaded_file.seek(0)
+    img = Image.open(uploaded_file)
+
+    width, height = img.size
+    aspect = height / width if width else 1
+
+    rl_width = max_width_cm * cm
+    rl_height = rl_width * aspect
+
+    uploaded_file.seek(0)
+
+    return RLImage(uploaded_file, width=rl_width, height=rl_height)
+
 def make_pdf(patient, study, params, interpretation, attachments):
 
     styles = getSampleStyleSheet()
@@ -274,9 +291,28 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     story.append(t3)
 
+# ---------------- ANEXOS ----------------
+story.append(Spacer(1, 10))
+story.append(Paragraph("5. Anexos del estudio", styles["XSection"]))
+
+if attachments.get("curve_image_1"):
+    story.append(Spacer(1, 6))
+    story.append(Paragraph("Curva flujo-volumen", styles["XSmall"]))
+    img1 = render_image(attachments["curve_image_1"])
+    if img1:
+        story.append(img1)
+
+if attachments.get("curve_image_2"):
+    story.append(Spacer(1, 6))
+    story.append(Paragraph("Curva volumen-tiempo", styles["XSmall"]))
+    img2 = render_image(attachments["curve_image_2"])
+    if img2:
+        story.append(img2)
+
+
     # ---------------- GRÁFICA ----------------
     story.append(PageBreak())
-    story.append(Paragraph("5. Resumen gráfico", styles["XSection"]))
+    story.append(Paragraph("6. Resumen gráfico", styles["XSection"]))
     story.append(RLImage(build_summary_chart(params), width=14*cm, height=7*cm))
 
     # ---------------- FIRMA ----------------
