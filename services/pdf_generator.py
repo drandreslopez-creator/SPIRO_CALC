@@ -111,6 +111,7 @@ styles.add(ParagraphStyle(
     leading=12,
     alignment=TA_JUSTIFY
 ))
+
     styles.add(ParagraphStyle(name="XSmall", fontSize=8.5, leading=10, alignment=TA_LEFT))
     styles.add(ParagraphStyle(
         name="XTitle",
