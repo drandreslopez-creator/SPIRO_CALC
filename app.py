@@ -322,6 +322,8 @@ if submitted:
         "fecha_nacimiento": fecha_nacimiento.strftime("%d/%m/%Y") if isinstance(fecha_nacimiento, date) else "",
         "edad": edad_txt,
         "sexo": sexo,
+	"etnia": etnia,
+	"fumador": fumador,
         "eps": eps,
         "peso": f"{peso:.1f} kg" if peso is not None else "",
         "talla": f"{talla:.1f} cm" if talla is not None else "",
