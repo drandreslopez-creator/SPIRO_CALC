@@ -3,6 +3,7 @@ from __future__ import annotations
 # Módulos propios
 from utils.calculations import *
 from services.interpretation import build_interpretation
+from services.spirometry_logic import ParameterResult  # 🔥 AQUÍ
 from services.pdf_generator import make_pdf, build_values_dataframe, build_summary_chart
 
 # Librerías necesarias
@@ -115,16 +116,6 @@ def calcular_predichos_lln(rows_data: dict, edad: Optional[float], sexo: str, ta
 
 # ----------------------------
 # Clinical engine
-@dataclass
-class ParameterResult:
-    name: str
-    unit: str
-    measured_pre: Optional[float]
-    measured_post: Optional[float]
-    predicted: Optional[float]
-    lln: Optional[float]
-    zscore_pre: Optional[float]
-    zscore_post: Optional[float]
 
     @property
     def pct_pred_pre(self) -> Optional[float]:
