@@ -110,7 +110,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
         name="XTitle",
         fontSize=12,
         leading=15,
-        alignment=TA_JUSTIFY,
+        alignment=TA_CENTER,
         spaceBefore=12,
         spaceAfter=8
     ))
