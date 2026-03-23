@@ -317,7 +317,12 @@ if submitted:
         )
 
     quality_text = f"Calidad {calidad.lower()}, reproducibilidad {reproducibilidad.lower()} y cooperación {cooperacion.lower()}."
-    interpretation = build_interpretation(edad_num, params, quality_text)
+    interpretation = build_interpretation(
+    edad_num,
+    params,
+    quality_text,
+    fumador=fumador
+)
     if nota_medica_manual.strip():
         interpretation["medical_comment"] = interpretation["medical_comment"] + " " + nota_medica_manual.strip()
 
