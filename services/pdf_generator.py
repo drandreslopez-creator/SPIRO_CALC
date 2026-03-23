@@ -161,8 +161,8 @@ def make_pdf(patient, study, params, interpretation, attachments):
         story.append(header)
 
     # Espacio + título
-    story.append(Spacer(1, 12))
-    story.append(Spacer(1, 12))
+    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 8))
 
     story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["XTitle"]))
 
