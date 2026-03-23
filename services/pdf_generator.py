@@ -25,7 +25,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.lib.enums import TA_JUSTIFY
+from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT, TA_CENTER
 
 from PIL import Image
 
@@ -105,14 +105,16 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     styles = getSampleStyleSheet()
 
-styles.add(ParagraphStyle(
-    name="Justify",
-    fontSize=9,
-    leading=12,
-    alignment=TA_JUSTIFY
-))
+    # 🔥 ESTILO JUSTIFICADO
+    styles.add(ParagraphStyle(
+        name="Justify",
+        fontSize=9,
+        leading=12,
+        alignment=TA_JUSTIFY
+    ))
 
     styles.add(ParagraphStyle(name="XSmall", fontSize=8.5, leading=10, alignment=TA_LEFT))
+
     styles.add(ParagraphStyle(
         name="XTitle",
         fontSize=12,
@@ -121,6 +123,7 @@ styles.add(ParagraphStyle(
         spaceBefore=12,
         spaceAfter=8
     ))
+
     styles.add(ParagraphStyle(
         name="XSection",
         fontSize=10.5,
@@ -162,121 +165,36 @@ styles.add(ParagraphStyle(
 
         header.setStyle(TableStyle([
             ("VALIGN", (0,0), (-1,-1), "TOP"),
-            ("TOPPADDING", (0,0), (0,0), -12),
+            ("TOPPADDING", (0,0), (0,0), -10),
         ]))
 
         story.append(header)
 
-    # Espacio + título
-    story.append(Spacer(1, 6))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 12))
 
     story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["XTitle"]))
 
     now = datetime.now(ZoneInfo("America/Bogota"))
     story.append(Paragraph(f"Fecha de generación: {now.strftime('%d/%m/%Y %H:%M')}", styles["XSmall"]))
 
-    # ---------------- PACIENTE ----------------
-    story.append(Spacer(1, 6))
-    story.append(Paragraph("1. Identificación del paciente", styles["XSection"]))
-
-    t = Table([
-        ["Nombre", patient.get("nombre",""), "Documento", patient.get("identificacion","")],
-        ["Fecha nacimiento", patient.get("fecha_nacimiento",""), "Edad", patient.get("edad","")],
-        ["Sexo", patient.get("sexo",""), "EPS", patient.get("eps","")],
-        ["Etnia", patient.get("etnia",""), "Tabaquismo", patient.get("fumador","")],
-	["Peso", patient.get("peso",""), "Talla", patient.get("talla","")],
-        ["Médico remitente", patient.get("remitente",""), "Fecha del estudio", study.get("fecha_estudio","")],
-        ["Indicación clínica", study.get("indicacion",""), "IDx", study.get("diagnostico","")],
-    ], colWidths=[3.2*cm,6.1*cm,3.0*cm,6.0*cm])
-
-    t.setStyle(TableStyle([
-        ("GRID",(0,0),(-1,-1),0.35,colors.grey),
-        ("BACKGROUND",(0,0),(0,-1),colors.whitesmoke),
-        ("BACKGROUND",(2,0),(2,-1),colors.whitesmoke),
-        ("FONTSIZE",(0,0),(-1,-1),8.6),
-    ]))
-
-    story.append(t)
-
-    # ---------------- DATOS ----------------
-    story.append(Spacer(1, 6))
-    story.append(Paragraph("2. Datos técnicos del estudio", styles["XSection"]))
-
-    t2 = Table([
-        ["Tipo de estudio", study.get("tipo_estudio","")],
-        ["Calidad", study.get("calidad","")],
-        ["Reproducibilidad", study.get("reproducibilidad","")],
-        ["Cooperación", study.get("cooperacion","")],
-        ["Broncodilatador", study.get("broncodilatador","")],
-        ["Tiempo post-BD", study.get("tiempo_post","")],
-    ], colWidths=[4.5*cm,13.8*cm])
-
-    t2.setStyle(TableStyle([
-        ("GRID",(0,0),(-1,-1),0.35,colors.grey),
-        ("BACKGROUND",(0,0),(0,-1),colors.whitesmoke),
-        ("FONTSIZE",(0,0),(-1,-1),8.6),
-    ]))
-
-    story.append(t2)
-
-    # ---------------- RESULTADOS ----------------
-    story.append(Spacer(1, 6))
-    story.append(Paragraph("3. Resultados espirométricos", styles["XSection"]))
-
-    df = build_values_dataframe(params)
-
-    def fmt(x):
-        if x is None or (isinstance(x, float) and pd.isna(x)):
-            return "—"
-        if isinstance(x, (int, float)):
-            return f"{x:.2f}"
-        return str(x)
-
-    display_df = df.copy()
-    for col in display_df.columns:
-        display_df[col] = display_df[col].apply(fmt)
-
-    table_data = [display_df.columns.tolist()] + display_df.values.tolist()
-
-    table = Table(table_data, repeatRows=1)
-    table.setStyle(TableStyle([
-        ("GRID",(0,0),(-1,-1),0.25,colors.grey),
-        ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
-        ("FONTSIZE",(0,0),(-1,-1),8),
-    ]))
-
-    story.append(table)
-
     # ---------------- INTERPRETACIÓN ----------------
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 10))
     story.append(Paragraph("4. Interpretación", styles["XSection"]))
 
     t3 = Table([
         ["Severidad", interpretation.get("severity","")],
         ["Respuesta broncodilatadora", interpretation.get("bronchodilator","")],
-        ["Reporte técnico", interpretation.get("technical_report","")],
-        ["Comentario médico", interpretation.get("medical_comment","")],
+        ["Reporte técnico", Paragraph(interpretation.get("technical_report",""), styles["Justify"])],
+        ["Comentario médico", Paragraph(interpretation.get("medical_comment",""), styles["Justify"])],
     ], colWidths=[5*cm,13*cm])
 
     t3.setStyle(TableStyle([
         ("GRID",(0,0),(-1,-1),0.3,colors.grey),
         ("BACKGROUND",(0,0),(0,-1),colors.whitesmoke),
+        ("VALIGN",(0,0),(-1,-1),"TOP"),
     ]))
 
     story.append(t3)
-
-    # ---------------- GRÁFICA ----------------
-    story.append(PageBreak())
-    story.append(Paragraph("5. Resumen gráfico", styles["XSection"]))
-    story.append(RLImage(build_summary_chart(params), width=14*cm, height=7*cm))
-
-    # ---------------- FIRMA ----------------
-    story.append(Spacer(1, 30))
-    story.append(Paragraph(
-        "<b>Dr. Andrés López Ruiz</b><br/>Médico Pediatra<br/>RM 1082877373",
-        styles["XSmall"]
-    ))
 
     doc.build(story)
 
