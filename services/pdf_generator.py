@@ -171,17 +171,17 @@ def make_pdf(patient, study, params, interpretation, attachments):
         )
 
         header.setStyle(TableStyle([
-    ("VALIGN", (0,0), (-1,-1), "TOP"),
-    ("TOPPADDING", (0,0), (0,0), -17),  # 🔥 sube el logo
-]))
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("TOPPADDING", (0,0), (0,0), -17),
+        ]))
 
-        story.append(header)
+                story.append(header)
 
-# 🔥 DOBLE ESPACIO REAL
-story.append(Spacer(1, 12))
-story.append(Spacer(1, 12))
+        # 🔥 DOBLE ESPACIO REAL
+        story.append(Spacer(1, 12))
+        story.append(Spacer(1, 12))
 
-story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["XTitle"]))
+        story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["XTitle"]))
 
     now = datetime.now(ZoneInfo("America/Bogota"))
     story.append(Paragraph(f"Fecha de generación: {now.strftime('%d/%m/%Y %H:%M')}", styles["XSmall"]))
