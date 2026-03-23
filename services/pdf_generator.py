@@ -130,7 +130,14 @@ def make_pdf(patient, study, params, interpretation, attachments):
     styles = getSampleStyleSheet()
 
     styles.add(ParagraphStyle(name="XSmall", fontSize=8.5, leading=10, alignment=TA_LEFT))
-    styles.add(ParagraphStyle(name="XTitle", fontSize=13, leading=15, alignment=TA_CENTER, spaceAfter=8))
+    styles.add(ParagraphStyle(
+    name="XTitle",
+    fontSize=12,
+    leading=15,
+    alignment=TA_CENTER,
+    spaceBefore=20,   # 🔥 AQUÍ está la clave
+    spaceAfter=8
+))
     styles.add(ParagraphStyle(name="XSection", fontSize=10.5, leading=12, textColor=colors.HexColor("#1F4E79"), spaceBefore=6, spaceAfter=4))
 
     buffer = io.BytesIO()
@@ -150,7 +157,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
     if LOGO_PATH.exists():
         header = Table(
             [[
-                RLImage(str(LOGO_PATH), width=2.7 * cm, height=2.7 * cm),
+                RLImage(str(LOGO_PATH), width=2.4 * cm, height=2.4 * cm),
                 Paragraph(
                     "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
                     "Médico Especialista en Pediatría<br/>"
@@ -169,9 +176,12 @@ def make_pdf(patient, study, params, interpretation, attachments):
 ]))
 
         story.append(header)
-        story.append(Spacer(1, 6))
 
-    story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["XTitle"]))
+# 🔥 DOBLE ESPACIO REAL
+story.append(Spacer(1, 12))
+story.append(Spacer(1, 12))
+
+story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["XTitle"]))
 
     now = datetime.now(ZoneInfo("America/Bogota"))
     story.append(Paragraph(f"Fecha de generación: {now.strftime('%d/%m/%Y %H:%M')}", styles["XSmall"]))
