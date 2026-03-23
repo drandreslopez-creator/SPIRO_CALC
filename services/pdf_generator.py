@@ -30,7 +30,6 @@ from reportlab.lib.enums import TA_JUSTIFY
 from PIL import Image
 
 
-# LOGO
 APP_DIR = Path(__file__).resolve().parent.parent
 LOGO_PATH = APP_DIR / "logo.png"
 
@@ -40,6 +39,7 @@ LOGO_PATH = APP_DIR / "logo.png"
 # ----------------------------
 def build_summary_chart(params: Dict[str, Any]) -> io.BytesIO:
     labels = ["FVC", "FEV1", "FEV1/FVC", "PEF", "FEF25-75"]
+
     pre = [params[k].pct_pred_pre if k in params else None for k in labels]
     post = [params[k].pct_pred_post if k in params else None for k in labels]
 
@@ -119,36 +119,6 @@ def render_image(uploaded_file, max_width_cm=14):
     return RLImage(uploaded_file, width=rl_width, height=rl_height)
 
 
-# ---------------- RESULTADOS ----------------
-story.append(Spacer(1, 6))
-story.append(Paragraph("3. Resultados espirométricos", styles["XSection"]))
-
-df = build_values_dataframe(params)
-
-def fmt(x):
-    if x is None or (isinstance(x, float) and pd.isna(x)):
-        return "—"
-    if isinstance(x, (int, float)):
-        return f"{x:.2f}"
-    return str(x)
-
-display_df = df.copy()
-for col in display_df.columns:
-    display_df[col] = display_df[col].apply(fmt)
-
-table_data = [display_df.columns.tolist()] + display_df.values.tolist()
-
-table = Table(table_data, repeatRows=1)
-
-table.setStyle(TableStyle([
-    ("GRID",(0,0),(-1,-1),0.25,colors.grey),
-    ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
-    ("FONTSIZE",(0,0),(-1,-1),8),
-]))
-
-story.append(table)
-
-
 # ----------------------------
 # PDF PRINCIPAL
 # ----------------------------
@@ -163,11 +133,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
         alignment=TA_JUSTIFY
     ))
 
-    styles.add(ParagraphStyle(
-        name="XSmall",
-        fontSize=8.5,
-        leading=10
-    ))
+    styles.add(ParagraphStyle(name="XSmall", fontSize=8.5, leading=10))
 
     styles.add(ParagraphStyle(
         name="XTitle",
@@ -200,22 +166,19 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     story = []
 
-    # ---------------- HEADER ----------------
+    # HEADER
     if LOGO_PATH.exists():
-        header = Table(
-            [[
-                RLImage(str(LOGO_PATH), width=2.4 * cm, height=2.4 * cm),
-                Paragraph(
-                    "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
-                    "Médico Especialista en Pediatría<br/>"
-                    "Calle 11 No. 10 - 83 Consultorio 301<br/>"
-                    "Edificio Centro Empresarial El Parque<br/>"
-                    "Sogamoso, Boyacá · Tel. 3004270647",
-                    styles["XSmall"],
-                )
-            ]],
-            colWidths=[2.8 * cm, 14.2 * cm]
-        )
+        header = Table([[
+            RLImage(str(LOGO_PATH), width=2.4 * cm, height=2.4 * cm),
+            Paragraph(
+                "<b>Consultorio Dr. Andrés López Ruiz</b><br/>"
+                "Médico Especialista en Pediatría<br/>"
+                "Calle 11 No. 10 - 83 Consultorio 301<br/>"
+                "Edificio Centro Empresarial El Parque<br/>"
+                "Sogamoso, Boyacá · Tel. 3004270647",
+                styles["XSmall"]
+            )
+        ]], colWidths=[2.8 * cm, 14.2 * cm])
 
         header.setStyle(TableStyle([
             ("VALIGN", (0,0), (-1,-1), "TOP"),
@@ -231,7 +194,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
     now = datetime.now(ZoneInfo("America/Bogota"))
     story.append(Paragraph(f"Fecha de generación: {now.strftime('%d/%m/%Y %H:%M')}", styles["XSmall"]))
 
-    # ---------------- PACIENTE ----------------
+    # PACIENTE
     story.append(Spacer(1, 6))
     story.append(Paragraph("1. Identificación del paciente", styles["XSection"]))
 
@@ -254,7 +217,57 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     story.append(t)
 
-    # ---------------- INTERPRETACIÓN ----------------
+    # DATOS TÉCNICOS
+    story.append(Spacer(1, 6))
+    story.append(Paragraph("2. Datos técnicos del estudio", styles["XSection"]))
+
+    t2 = Table([
+        ["Tipo de estudio", study.get("tipo_estudio","")],
+        ["Calidad", study.get("calidad","")],
+        ["Reproducibilidad", study.get("reproducibilidad","")],
+        ["Cooperación", study.get("cooperacion","")],
+        ["Broncodilatador", study.get("broncodilatador","")],
+        ["Tiempo post-BD", study.get("tiempo_post","")],
+    ], colWidths=[4.5*cm,13.8*cm])
+
+    t2.setStyle(TableStyle([
+        ("GRID",(0,0),(-1,-1),0.35,colors.grey),
+        ("BACKGROUND",(0,0),(0,-1),colors.whitesmoke),
+        ("FONTSIZE",(0,0),(-1,-1),8.6),
+    ]))
+
+    story.append(t2)
+
+    # RESULTADOS
+    story.append(Spacer(1, 6))
+    story.append(Paragraph("3. Resultados espirométricos", styles["XSection"]))
+
+    df = build_values_dataframe(params)
+
+    def fmt(x):
+        if x is None or (isinstance(x, float) and pd.isna(x)):
+            return "—"
+        if isinstance(x, (int, float)):
+            return f"{x:.2f}"
+        return str(x)
+
+    display_df = df.copy()
+    for col in display_df.columns:
+        display_df[col] = display_df[col].apply(fmt)
+
+    table_data = [display_df.columns.tolist()] + display_df.values.tolist()
+
+    table = Table(table_data, repeatRows=1)
+
+    table.setStyle(TableStyle([
+        ("GRID",(0,0),(-1,-1),0.25,colors.grey),
+        ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
+        ("FONTSIZE",(0,0),(-1,-1),8),
+    ]))
+
+    story.append(table)
+
+    # INTERPRETACIÓN
     story.append(Spacer(1, 6))
     story.append(Paragraph("4. Interpretación", styles["XSection"]))
 
@@ -272,28 +285,24 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     story.append(t3)
 
-    # ---------------- ANEXOS ----------------
+    # ANEXOS
     story.append(Spacer(1, 10))
     story.append(Paragraph("5. Anexos del estudio", styles["XSection"]))
 
     if attachments.get("curve_image_1"):
         story.append(Paragraph("Curva flujo-volumen", styles["XSmall"]))
-        img1 = render_image(attachments["curve_image_1"])
-        if img1:
-            story.append(img1)
+        story.append(render_image(attachments["curve_image_1"]))
 
     if attachments.get("curve_image_2"):
         story.append(Paragraph("Curva volumen-tiempo", styles["XSmall"]))
-        img2 = render_image(attachments["curve_image_2"])
-        if img2:
-            story.append(img2)
+        story.append(render_image(attachments["curve_image_2"]))
 
-    # ---------------- GRÁFICA ----------------
+    # GRÁFICA
     story.append(PageBreak())
     story.append(Paragraph("6. Resumen gráfico", styles["XSection"]))
     story.append(RLImage(build_summary_chart(params), width=14*cm, height=7*cm))
 
-    # ---------------- FIRMA ----------------
+    # FIRMA
     story.append(Spacer(1, 30))
     story.append(Paragraph(
         "<b>Dr. Andrés López Ruiz</b><br/>Médico Pediatra<br/>RM 1082877373",
