@@ -101,7 +101,7 @@ def build_values_dataframe(params: Dict[str, Any]) -> pd.DataFrame:
 # ----------------------------
 # RENDER IMAGEN
 # ----------------------------
-def render_image(uploaded_file, max_width_cm=14):
+def render_image(uploaded_file, max_width_cm=10):  # 👈 más pequeño
     if uploaded_file is None:
         return None
 
@@ -267,6 +267,17 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     story.append(table)
 
+# ---------------- IMÁGENES (DEBAJO DE RESULTADOS) ----------------
+if attachments.get("curve_image_1"):
+    story.append(Spacer(1, 8))
+    story.append(Paragraph("Curva flujo-volumen", styles["XSmall"]))
+    story.append(render_image(attachments["curve_image_1"]))
+
+if attachments.get("curve_image_2"):
+    story.append(Spacer(1, 8))
+    story.append(Paragraph("Curva volumen-tiempo", styles["XSmall"]))
+    story.append(render_image(attachments["curve_image_2"]))
+
     # INTERPRETACIÓN
     story.append(Spacer(1, 6))
     story.append(Paragraph("4. Interpretación", styles["XSection"]))
@@ -285,21 +296,9 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     story.append(t3)
 
-    # ANEXOS
-    story.append(Spacer(1, 10))
-    story.append(Paragraph("5. Anexos del estudio", styles["XSection"]))
-
-    if attachments.get("curve_image_1"):
-        story.append(Paragraph("Curva flujo-volumen", styles["XSmall"]))
-        story.append(render_image(attachments["curve_image_1"]))
-
-    if attachments.get("curve_image_2"):
-        story.append(Paragraph("Curva volumen-tiempo", styles["XSmall"]))
-        story.append(render_image(attachments["curve_image_2"]))
-
     # GRÁFICA
     story.append(PageBreak())
-    story.append(Paragraph("6. Resumen gráfico", styles["XSection"]))
+    story.append(Paragraph("5. Resumen gráfico", styles["XSection"]))
     story.append(RLImage(build_summary_chart(params), width=14*cm, height=7*cm))
 
     # FIRMA
