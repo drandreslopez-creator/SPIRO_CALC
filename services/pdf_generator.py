@@ -119,6 +119,36 @@ def render_image(uploaded_file, max_width_cm=14):
     return RLImage(uploaded_file, width=rl_width, height=rl_height)
 
 
+# ---------------- RESULTADOS ----------------
+story.append(Spacer(1, 6))
+story.append(Paragraph("3. Resultados espirométricos", styles["XSection"]))
+
+df = build_values_dataframe(params)
+
+def fmt(x):
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return "—"
+    if isinstance(x, (int, float)):
+        return f"{x:.2f}"
+    return str(x)
+
+display_df = df.copy()
+for col in display_df.columns:
+    display_df[col] = display_df[col].apply(fmt)
+
+table_data = [display_df.columns.tolist()] + display_df.values.tolist()
+
+table = Table(table_data, repeatRows=1)
+
+table.setStyle(TableStyle([
+    ("GRID",(0,0),(-1,-1),0.25,colors.grey),
+    ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
+    ("FONTSIZE",(0,0),(-1,-1),8),
+]))
+
+story.append(table)
+
+
 # ----------------------------
 # PDF PRINCIPAL
 # ----------------------------
