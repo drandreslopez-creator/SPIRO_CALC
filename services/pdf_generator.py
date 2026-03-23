@@ -177,7 +177,8 @@ def make_pdf(patient, study, params, interpretation, attachments):
         ["Nombre", patient.get("nombre",""), "Documento", patient.get("identificacion","")],
         ["Fecha nacimiento", patient.get("fecha_nacimiento",""), "Edad", patient.get("edad","")],
         ["Sexo", patient.get("sexo",""), "EPS", patient.get("eps","")],
-        ["Peso", patient.get("peso",""), "Talla", patient.get("talla","")],
+        ["Etnia", patient.get("etnia",""), "Tabaquismo", patient.get("fumador","")],
+	["Peso", patient.get("peso",""), "Talla", patient.get("talla","")],
         ["Médico remitente", patient.get("remitente",""), "Fecha del estudio", study.get("fecha_estudio","")],
         ["Indicación clínica", study.get("indicacion",""), "IDx", study.get("diagnostico","")],
     ], colWidths=[3.2*cm,6.1*cm,3.0*cm,6.0*cm])
