@@ -311,7 +311,34 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     doc.build(story)
 
-    pdf = buffer.getvalue()
-    buffer.close()
+pdf_bytes = buffer.getvalue()
+buffer.close()
 
-    return pdf
+# 🔥 NUEVO: fusionar con PDF del equipo
+curve_pdf = attachments.get("curve_pdf")
+
+if curve_pdf is not None:
+    try:
+        writer = PdfWriter()
+
+        # PDF generado
+        main_pdf = PdfReader(io.BytesIO(pdf_bytes))
+        for page in main_pdf.pages:
+            writer.add_page(page)
+
+        # PDF del equipo
+        extra_pdf = PdfReader(curve_pdf)
+        for page in extra_pdf.pages:
+            writer.add_page(page)
+
+        output_buffer = io.BytesIO()
+        writer.write(output_buffer)
+        output_buffer.seek(0)
+
+        return output_buffer.read()
+
+    except Exception as e:
+        print("Error uniendo PDFs:", e)
+        return pdf_bytes
+
+return pdf_bytes
