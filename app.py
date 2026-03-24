@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
+from pypdf import PdfReader, PdfWriter
 from typing import Any, Dict, List, Optional, Tuple
 
 import streamlit as st
