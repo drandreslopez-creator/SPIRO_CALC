@@ -71,32 +71,31 @@ def ensure_session_defaults() -> None:
 # ----------------------------
 # Función para calcular predichos y LLN
 # ----------------------------
-def calcular_predichos_lln(rows_data: dict, edad: Optional[float], sexo: str, talla: Optional[float]) -> dict:
-    """
-    Calcula valores predichos y LLN automáticos para los parámetros espirométricos.
-    Maneja casos donde faltan datos sin producir errores.
-    """
+def calcular_predichos_lln(rows_data: dict, edad: Optional[float], sexo: str, talla: Optional[float], etnia: str) -> dict:
+
     if edad is None or sexo not in ["Femenino", "Masculino"] or talla is None:
-        return rows_data  # No hay datos suficientes, devuelve tal cual
+        return rows_data
 
     rows_updated = {}
+
     for name, row in rows_data.items():
-        # Datos base
+
         pred = row.get("pred")
         lln = row.get("lln")
-gli = get_gli_reference(name, edad, talla, sexo, etnia)
 
-        # Calcular predicho automáticamente si falta
+        # 🔥 GLI BIEN UBICADO
+        gli = get_gli_reference(name, edad, talla, sexo, etnia)
+
         if pred is None:
-    pred = gli["pred"]
+            pred = gli["pred"]
 
-if lln is None:
-    lln = gli["lln"]
+        if lln is None:
+            lln = gli["lln"]
 
-        # Guardar los valores calculados
         updated_row = row.copy()
         updated_row["pred"] = pred
         updated_row["lln"] = lln
+
         rows_updated[name] = updated_row
 
     return rows_updated
