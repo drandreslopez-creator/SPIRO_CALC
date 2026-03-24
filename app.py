@@ -100,33 +100,6 @@ def calcular_predichos_lln(rows_data: dict, edad: Optional[float], sexo: str, ta
 
     return rows_updated
 
-# ----------------------------
-# Clinical engine
-
-    @property
-    def pct_pred_pre(self) -> Optional[float]:
-        if self.measured_pre is None or self.predicted in (None, 0):
-            return None
-        return (self.measured_pre / self.predicted) * 100
-
-    @property
-    def pct_pred_post(self) -> Optional[float]:
-        if self.measured_post is None or self.predicted in (None, 0):
-            return None
-        return (self.measured_post / self.predicted) * 100
-
-    @property
-    def delta_abs(self) -> Optional[float]:
-        if self.measured_pre is None or self.measured_post is None:
-            return None
-        return self.measured_post - self.measured_pre
-
-    @property
-    def delta_pct_baseline(self) -> Optional[float]:
-        if self.measured_pre in (None, 0) or self.measured_post is None:
-            return None
-        return ((self.measured_post - self.measured_pre) / self.measured_pre) * 100
-
 
 # ----------------------------
 # Sidebar / static content
@@ -284,7 +257,7 @@ if submitted:
     edad_txt = age_text(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else ""
 
     # Calcular valores predichos y LLN automáticamente
-    rows_data = calcular_predichos_lln(rows_data, edad_num, sexo, talla)
+    rows_data = calcular_predichos_lln(rows_data, edad_num, sexo, talla, etnia)
 
     params = {}
     for name, row in rows_data.items():
