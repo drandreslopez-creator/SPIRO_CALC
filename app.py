@@ -332,11 +332,24 @@ if submitted:
             st.image(curve_image_2, caption="Curva volumen-tiempo")
 
     with tab2:
-        st.markdown("### Lectura médica orientativa")
-        st.write(f"**Patrón:** {interpretation['pattern']}")
-        st.write(f"**Severidad:** {interpretation['severity']}")
-        st.write(f"**Respuesta broncodilatadora:** {interpretation['bronchodilator']}")
-        st.write(interpretation["medical_comment"])
+
+    # 🔥 SEMÁFORO CLÍNICO
+    semaforo = interpretation.get("semaforo", "")
+
+    if "🟢" in semaforo:
+        st.success(semaforo)
+    elif "🟡" in semaforo:
+        st.warning(semaforo)
+    elif "🔴" in semaforo:
+        st.error(semaforo)
+    else:
+        st.info(semaforo)
+
+    st.markdown("### Lectura médica orientativa")
+    st.write(f"**Patrón:** {interpretation['pattern']}")
+    st.write(f"**Severidad:** {interpretation['severity']}")
+    st.write(f"**Respuesta broncodilatadora:** {interpretation['bronchodilator']}")
+    st.write(interpretation["medical_comment"])
 
     with tab3:
         df = build_values_dataframe(params)
