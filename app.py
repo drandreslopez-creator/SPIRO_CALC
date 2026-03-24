@@ -256,7 +256,7 @@ if submitted:
     edad_num = age_in_years(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else None
     edad_txt = age_text(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else ""
 
-    # Calcular valores predichos y LLN automáticamente
+    # Calcular predichos
     rows_data = calcular_predichos_lln(rows_data, edad_num, sexo, talla, etnia)
 
     params = {}
@@ -276,17 +276,20 @@ if submitted:
         )
 
     quality_text = f"Calidad {calidad.lower()}, reproducibilidad {reproducibilidad.lower()} y cooperación {cooperacion.lower()}."
-interpretation = build_interpretation(
-    edad_num,
-    params,
-    quality_text,
-    fumador=fumador,
-    calidad=calidad,
-    reproducibilidad=reproducibilidad,
-    cooperacion=cooperacion
-)
+
+    # 🔥 INTERPRETACIÓN BIEN UBICADA
+    interpretation = build_interpretation(
+        edad_num,
+        params,
+        quality_text,
+        fumador=fumador,
+        calidad=calidad,
+        reproducibilidad=reproducibilidad,
+        cooperacion=cooperacion
+    )
+
     if nota_medica_manual.strip():
-        interpretation["medical_comment"] = interpretation["medical_comment"] + " " + nota_medica_manual.strip()
+        interpretation["medical_comment"] += " " + nota_medica_manual.strip()
 
     patient_dict = {
         "nombre": nombre,
@@ -294,13 +297,14 @@ interpretation = build_interpretation(
         "fecha_nacimiento": fecha_nacimiento.strftime("%d/%m/%Y") if isinstance(fecha_nacimiento, date) else "",
         "edad": edad_txt,
         "sexo": sexo,
-	"etnia": etnia,
-	"fumador": fumador,
+        "etnia": etnia,
+        "fumador": fumador,
         "eps": eps,
         "peso": f"{peso:.1f} kg" if peso is not None else "",
         "talla": f"{talla:.1f} cm" if talla is not None else "",
         "remitente": remitente,
     }
+
     study_dict = {
         "fecha_estudio": fecha_estudio.strftime("%d/%m/%Y") if isinstance(fecha_estudio, date) else "",
         "indicacion": indicacion,
@@ -325,40 +329,43 @@ interpretation = build_interpretation(
     st.success("Reporte generado correctamente.")
 
     tab1, tab2, tab3 = st.tabs(["Reporte técnico", "Interpretación médica", "Datos tabulados"])
+
     with tab1:
         st.markdown("### Texto sugerido para el reporte")
         st.write(interpretation["technical_report"])
         st.write(f"**Resultado:** {interpretation['result']}")
+
         if curve_image_1:
             st.image(curve_image_1, caption="Curva flujo-volumen")
         if curve_image_2:
             st.image(curve_image_2, caption="Curva volumen-tiempo")
 
-with tab2:
+    with tab2:
 
-    # 🔥 SEMÁFORO CLÍNICO
-    semaforo = interpretation.get("semaforo", "")
+        # 🔥 SEMÁFORO
+        semaforo = interpretation.get("semaforo", "")
 
-    if "🟢" in semaforo:
-        st.success(semaforo)
-    elif "🟡" in semaforo:
-        st.warning(semaforo)
-    elif "🔴" in semaforo:
-        st.error(semaforo)
-    else:
-        st.info(semaforo)
+        if "🟢" in semaforo:
+            st.success(semaforo)
+        elif "🟡" in semaforo:
+            st.warning(semaforo)
+        elif "🔴" in semaforo:
+            st.error(semaforo)
+        else:
+            st.info(semaforo)
 
-    st.markdown("### Lectura médica orientativa")
-    st.write(f"**Patrón:** {interpretation['pattern']}")
-    st.write(f"**Severidad:** {interpretation['severity']}")
-    st.write(f"**Respuesta broncodilatadora:** {interpretation['bronchodilator']}")
-    st.write(interpretation["medical_comment"])
+        st.markdown("### Lectura médica orientativa")
+        st.write(f"**Patrón:** {interpretation['pattern']}")
+        st.write(f"**Severidad:** {interpretation['severity']}")
+        st.write(f"**Respuesta broncodilatadora:** {interpretation['bronchodilator']}")
+        st.write(interpretation["medical_comment"])
 
     with tab3:
         df = build_values_dataframe(params)
         st.dataframe(df, use_container_width=True)
 
     dl1, dl2 = st.columns(2)
+
     dl1.download_button(
         "Descargar PDF del reporte",
         data=pdf_bytes,
@@ -366,6 +373,7 @@ with tab2:
         mime="application/pdf",
         use_container_width=True,
     )
+
     dl2.download_button(
         "Descargar tabla CSV",
         data=csv_bytes,
