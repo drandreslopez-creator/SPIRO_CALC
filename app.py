@@ -280,10 +280,18 @@ with st.form("spirometry_form"):
         }
 
     st.subheader("Anexos del estudio")
-    a1, a2, a3 = st.columns(3)
-    
-    curve_image_1 = a2.file_uploader("Imagen curva flujo-volumen (opcional)", type=["png", "jpg", "jpeg"])
-    curve_image_2 = a3.file_uploader("Imagen curva volumen-tiempo (opcional)", type=["png", "jpg", "jpeg"])
+
+c1, c2 = st.columns(2)
+
+curve_image_1 = c1.file_uploader(
+    "Curva flujo-volumen",
+    type=["png", "jpg", "jpeg"]
+)
+
+curve_image_2 = c2.file_uploader(
+    "Curva volumen-tiempo",
+    type=["png", "jpg", "jpeg"]
+)
 
     st.subheader("Comentario adicional")
     nota_medica_manual = st.text_area(
