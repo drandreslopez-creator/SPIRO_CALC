@@ -221,38 +221,38 @@ with st.form("spirometry_form"):
         col.markdown(f"**{head}**")
 
     for name, unit in param_config:
-        cols = st.columns([1.8, 1.2, 1.2, 1.1, 1.0, 1.0, 1.2, 1.0])
+    cols = st.columns([1.8, 1.2, 1.2, 1.1, 1.0, 1.0, 1.2, 1.0])
 
-        cols[0].markdown(f"{name} ({unit})")
+    cols[0].markdown(f"{name} ({unit})")
 
-        measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.01)
-        predicted = cols[2].number_input(f"{name}_pred", label_visibility="collapsed", value=None, step=0.01)
+    measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.01)
+    predicted = cols[2].number_input(f"{name}_pred", label_visibility="collapsed", value=None, step=0.01)
 
-        pct_auto = None
-        if measured_pre is not None and predicted not in (None, 0):
-            pct_auto = (float(measured_pre) / float(predicted)) * 100
+    pct_auto = None
+    if measured_pre is not None and predicted not in (None, 0):
+        pct_auto = (float(measured_pre) / float(predicted)) * 100
 
-        cols[3].markdown(f"{fmt_num(pct_auto, 1)}")
+    cols[3].markdown(f"{fmt_num(pct_auto, 1)}")
 
-        lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.01)
+    lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.01)
 
-        cols[5].markdown("Auto")
+    cols[5].markdown("Auto")
 
-        post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
+    post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
 
-        cols[7].markdown("Auto")
+    cols[7].markdown("Auto")
 
-        rows_data[name] = {
-    "unit": unit,
-    "pre": safe_float(measured_pre),
-    "pred": safe_float(predicted),
-    "lln": safe_float(lln),
-    "zpre": None,
-    "post": safe_float(post),
-    "zpost": None,
-}
+    rows_data[name] = {
+        "unit": unit,
+        "pre": safe_float(measured_pre),
+        "pred": safe_float(predicted),
+        "lln": safe_float(lln),
+        "zpre": None,
+        "post": safe_float(post),
+        "zpost": None,
+    }
 
-# 👇 AQUÍ TERMINA EL FOR (IMPORTANTE)
+# 🔥 ESTO SIGUE DENTRO DEL FORM (MISMA INDENTACIÓN)
 
 st.subheader("Anexos del estudio")
 
@@ -275,7 +275,11 @@ nota_medica_manual = st.text_area(
     placeholder="Este texto se agregará al comentario médico automático si lo deseas.",
 )
 
-    submitted = st.form_submit_button("Generar reporte e interpretación", use_container_width=True)
+# 🔥 ESTO TAMBIÉN DENTRO DEL FORM
+submitted = st.form_submit_button(
+    "Generar reporte e interpretación",
+    use_container_width=True
+)
 
 if submitted:
     edad_num = age_in_years(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else None
