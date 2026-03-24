@@ -310,38 +310,38 @@ def make_pdf(patient, study, params, interpretation, attachments):
         if img2:
             story.append(img2)
 
-doc.build(story)
+    doc.build(story)
 
-pdf_bytes = buffer.getvalue()
-buffer.close()
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
 
-# 🔥 FUSIÓN CON PDF DEL EQUIPO
-curve_pdf = attachments.get("curve_pdf")
+    # 🔥 FUSIÓN CON PDF DEL EQUIPO
+    curve_pdf = attachments.get("curve_pdf")
 
-if curve_pdf is not None:
-    try:
-        writer = PdfWriter()
+    if curve_pdf is not None:
+        try:
+            writer = PdfWriter()
 
-        # PDF principal
-        main_pdf = PdfReader(io.BytesIO(pdf_bytes))
-        for page in main_pdf.pages:
-            writer.add_page(page)
+            # PDF principal
+            main_pdf = PdfReader(io.BytesIO(pdf_bytes))
+            for page in main_pdf.pages:
+                writer.add_page(page)
 
-        # PDF del equipo
-        curve_pdf.seek(0)
-        extra_pdf = PdfReader(curve_pdf)
+            # PDF del equipo
+            curve_pdf.seek(0)
+            extra_pdf = PdfReader(curve_pdf)
 
-        for page in extra_pdf.pages:
-            writer.add_page(page)
+            for page in extra_pdf.pages:
+                writer.add_page(page)
 
-        output_buffer = io.BytesIO()
-        writer.write(output_buffer)
-        output_buffer.seek(0)
+            output_buffer = io.BytesIO()
+            writer.write(output_buffer)
+            output_buffer.seek(0)
 
-        return output_buffer.read()
+            return output_buffer.read()
 
-    except Exception as e:
-        print("Error uniendo PDFs:", e)
-        return pdf_bytes
+        except Exception as e:
+            print("Error uniendo PDFs:", e)
+            return pdf_bytes
 
-return pdf_bytes
+    return pdf_bytes
