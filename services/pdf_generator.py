@@ -311,7 +311,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     doc.build(story)
 
-pdf_bytes = buffer.getvalue()
+    pdf_bytes = buffer.getvalue()
 buffer.close()
 
 # 🔥 NUEVO: fusionar con PDF del equipo
