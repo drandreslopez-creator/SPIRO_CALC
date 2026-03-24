@@ -50,14 +50,22 @@ def clasificar_gold(fev1_pct):
 
 
 def clasificar_semaforo(pattern, severity):
-    if pattern == "Espirometría dentro de límites normales":
+
+    if pattern and "normal" in pattern.lower():
         return "🟢 NORMAL"
-    if severity in ["Leve"]:
-        return "🟡 ALTERACIÓN LEVE"
-    if severity in ["Moderado"]:
-        return "🟡 ALTERACIÓN MODERADA"
-    if severity in ["Severo", "Muy severo"]:
-        return "🔴 ALTERACIÓN SEVERA"
+
+    if severity:
+        sev = severity.lower()
+
+        if "leve" in sev:
+            return "🟡 ALTERACIÓN LEVE"
+
+        if "moderado" in sev:
+            return "🟡 ALTERACIÓN MODERADA"
+
+        if "severo" in sev:
+            return "🔴 ALTERACIÓN SEVERA"
+
     return "🟡 RESULTADO A INTERPRETAR"
 
 
