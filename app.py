@@ -280,7 +280,10 @@ if submitted:
     edad_num,
     params,
     quality_text,
-    fumador=fumador
+    fumador=fumador,
+    calidad=calidad,
+    reproducibilidad=reproducibilidad,
+    cooperacion=cooperacion
 )
     if nota_medica_manual.strip():
         interpretation["medical_comment"] = interpretation["medical_comment"] + " " + nota_medica_manual.strip()
