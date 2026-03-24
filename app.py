@@ -281,6 +281,7 @@ with st.form("spirometry_form"):
 
     st.subheader("Anexos del estudio")
     a1, a2, a3 = st.columns(3)
+    curve_pdf = a1.file_uploader("PDF exportado del equipo (opcional)", type=["pdf"])
     curve_image_1 = a2.file_uploader("Imagen curva flujo-volumen (opcional)", type=["png", "jpg", "jpeg"])
     curve_image_2 = a3.file_uploader("Imagen curva volumen-tiempo (opcional)", type=["png", "jpg", "jpeg"])
 
@@ -351,6 +352,7 @@ if submitted:
     }
 
     attachments = {
+        "curve_pdf": curve_pdf,
         "curve_image_1": curve_image_1,
         "curve_image_2": curve_image_2,
     }
