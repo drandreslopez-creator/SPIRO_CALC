@@ -343,7 +343,7 @@ if submitted:
     with tab2:
 
         # 🔥 SEMÁFORO
-        semaforo = interpretation.get("semaforo", "")
+        semaforo = interpretation.get("semaforo") or "⚠️ SIN CLASIFICAR"
 
         if "🟢" in semaforo:
             st.success(semaforo)
