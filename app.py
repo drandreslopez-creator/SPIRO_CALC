@@ -243,34 +243,37 @@ with st.form("spirometry_form"):
         cols[7].markdown("Auto")
 
         rows_data[name] = {
-            "unit": unit,
-            "pre": safe_float(measured_pre),
-            "pred": safe_float(predicted),
-            "lln": safe_float(lln),
-            "zpre": None,
-            "post": safe_float(post),
-            "zpost": None,
-        }
+    "unit": unit,
+    "pre": safe_float(measured_pre),
+    "pred": safe_float(predicted),
+    "lln": safe_float(lln),
+    "zpre": None,
+    "post": safe_float(post),
+    "zpost": None,
+}
 
-        st.subheader("Anexos del estudio")
+# 👇 AQUÍ TERMINA EL FOR (IMPORTANTE)
 
-    c1, c2 = st.columns(2)
+st.subheader("Anexos del estudio")
 
-    curve_image_1 = c1.file_uploader(
-        "Curva flujo-volumen",
-        type=["png", "jpg", "jpeg"]
-    )
+c1, c2 = st.columns(2)
 
-    curve_image_2 = c2.file_uploader(
-        "Curva volumen-tiempo",
-        type=["png", "jpg", "jpeg"]
-    )
+curve_image_1 = c1.file_uploader(
+    "Curva flujo-volumen",
+    type=["png", "jpg", "jpeg"]
+)
 
-    st.subheader("Comentario adicional")
-    nota_medica_manual = st.text_area(
-        "Comentario complementario del médico (opcional)",
-        placeholder="Este texto se agregará al comentario médico automático si lo deseas.",
-    )
+curve_image_2 = c2.file_uploader(
+    "Curva volumen-tiempo",
+    type=["png", "jpg", "jpeg"]
+)
+
+st.subheader("Comentario adicional")
+
+nota_medica_manual = st.text_area(
+    "Comentario complementario del médico (opcional)",
+    placeholder="Este texto se agregará al comentario médico automático si lo deseas.",
+)
 
     submitted = st.form_submit_button("Generar reporte e interpretación", use_container_width=True)
 
