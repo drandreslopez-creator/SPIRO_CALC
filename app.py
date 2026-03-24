@@ -9,6 +9,7 @@ from services.pdf_generator import make_pdf, build_values_dataframe, build_summa
 # Librerías necesarias
 import tempfile
 import zipfile
+from utils.gli import get_gli_reference
 from dataclasses import dataclass
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
@@ -83,29 +84,14 @@ def calcular_predichos_lln(rows_data: dict, edad: Optional[float], sexo: str, ta
         # Datos base
         pred = row.get("pred")
         lln = row.get("lln")
+gli = get_gli_reference(name, edad, talla, sexo, etnia)
 
         # Calcular predicho automáticamente si falta
         if pred is None:
-            # Fórmula simplificada de ejemplo (puedes reemplazar con tus ecuaciones específicas)
-            # Aquí solo usamos talla y sexo de manera simple
-            if name in ["FVC", "FEV1"]:
-                factor = 0.04 if sexo == "Masculino" else 0.035
-                pred = talla * factor * edad ** 0.5  # ejemplo
-            elif name == "FEV1/FVC":
-                pred = 0.8  # valor de referencia promedio
-            elif name in ["PEF", "FEF25-75"]:
-                pred = 0.5 * talla  # ejemplo simplificado
-            else:
-                pred = 1.0  # valor por defecto seguro
+    pred = gli["pred"]
 
-        # Calcular desviación estándar (SD) para LLN
-        sd = estimate_sd(pred, name)
-        if sd is None:
-            sd = pred * 0.15  # fallback si estimate_sd devuelve None
-
-        # Calcular LLN si falta
-        if lln is None:
-            lln = pred - 1.64 * sd
+if lln is None:
+    lln = gli["lln"]
 
         # Guardar los valores calculados
         updated_row = row.copy()
