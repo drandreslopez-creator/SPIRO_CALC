@@ -220,7 +220,7 @@ with st.form("spirometry_form"):
     for col, head in zip(header_cols, headers):
         col.markdown(f"**{head}**")
 
-    for name, unit in param_config:
+for name, unit in param_config:
     cols = st.columns([1.8, 1.2, 1.2, 1.1, 1.0, 1.0, 1.2, 1.0])
 
     cols[0].markdown(f"{name} ({unit})")
