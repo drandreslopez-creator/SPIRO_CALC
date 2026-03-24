@@ -276,7 +276,7 @@ if submitted:
         )
 
     quality_text = f"Calidad {calidad.lower()}, reproducibilidad {reproducibilidad.lower()} y cooperación {cooperacion.lower()}."
-    interpretation = build_interpretation(
+interpretation = build_interpretation(
     edad_num,
     params,
     quality_text,
@@ -334,7 +334,7 @@ if submitted:
         if curve_image_2:
             st.image(curve_image_2, caption="Curva volumen-tiempo")
 
-    with tab2:
+with tab2:
 
     # 🔥 SEMÁFORO CLÍNICO
     semaforo = interpretation.get("semaforo", "")
