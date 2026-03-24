@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from typing import Dict, Any
+from pypdf import PdfReader, PdfWriter
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -309,25 +310,27 @@ def make_pdf(patient, study, params, interpretation, attachments):
         if img2:
             story.append(img2)
 
-    doc.build(story)
+doc.build(story)
 
-    pdf_bytes = buffer.getvalue()
+pdf_bytes = buffer.getvalue()
 buffer.close()
 
-# 🔥 NUEVO: fusionar con PDF del equipo
+# 🔥 FUSIÓN CON PDF DEL EQUIPO
 curve_pdf = attachments.get("curve_pdf")
 
 if curve_pdf is not None:
     try:
         writer = PdfWriter()
 
-        # PDF generado
+        # PDF principal
         main_pdf = PdfReader(io.BytesIO(pdf_bytes))
         for page in main_pdf.pages:
             writer.add_page(page)
 
         # PDF del equipo
+        curve_pdf.seek(0)
         extra_pdf = PdfReader(curve_pdf)
+
         for page in extra_pdf.pages:
             writer.add_page(page)
 
