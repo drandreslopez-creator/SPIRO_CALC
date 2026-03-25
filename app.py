@@ -5,7 +5,13 @@ from utils.calculations import *
 from services.interpretation import build_interpretation
 from services.spirometry_logic import ParameterResult  # 🔥 AQUÍ
 from services.pdf_generator import make_pdf, build_values_dataframe, build_summary_chart
-from services.database import init_db, save_patient, save_spirometry
+ffrom services.database import (
+    init_db,
+    save_patient,
+    save_spirometry,
+    get_all_patients,
+    get_patient_reports
+)
 
 # Librerías necesarias
 import tempfile
