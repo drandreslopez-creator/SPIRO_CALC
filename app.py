@@ -405,3 +405,36 @@ if submitted:
 
 else:
     st.info("Completa el formulario y pulsa “Generar reporte e interpretación”.")
+
+# ----------------------------
+# 🧑‍⚕️ HISTORIAL DE PACIENTES
+# ----------------------------
+
+st.divider()
+st.subheader("🧑‍⚕️ Historial de pacientes")
+
+patients = get_all_patients()
+
+if patients:
+    opciones = {f"{p[1]} ({p[2]})": p[0] for p in patients}
+
+    paciente_sel = st.selectbox("Seleccionar paciente", list(opciones.keys()))
+
+    if paciente_sel:
+        patient_id = opciones[paciente_sel]
+
+        reports = get_patient_reports(patient_id)
+
+        if reports:
+            for r in reports:
+                st.markdown("---")
+                st.write(f"📅 Fecha: {r[0]}")
+                st.write(f"🫁 Patrón: {r[1]}")
+                st.write(f"📊 Severidad: {r[2]}")
+                st.write(f"🚦 Semáforo: {r[3]}")
+                st.write(f"🧾 Resultado: {r[4]}")
+                st.write(f"💬 Comentario: {r[5]}")
+        else:
+            st.info("Este paciente no tiene estudios registrados.")
+else:
+    st.info("No hay pacientes guardados aún.")
