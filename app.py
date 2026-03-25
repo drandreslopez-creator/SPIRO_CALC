@@ -303,7 +303,7 @@ if submitted:
         sexo
     )
 
-    save_spirometry(patient_id, interpretation, params)
+    save_spirometry(patient_id, interpretation)
 
     # 🔥 COMENTARIO MANUAL
     if nota_medica_manual.strip():
