@@ -438,23 +438,26 @@ if patients:
         else:
             st.info("Este paciente no tiene estudios registrados.")
 
-# ----------------------------
-# 📈 EVOLUCIÓN DE FEV1
-# ----------------------------
-st.markdown("### 📈 Evolución de FEV1")
+        # ----------------------------
+        # 📈 EVOLUCIÓN DE FEV1 (CORREGIDO)
+        # ----------------------------
+        st.markdown("### 📈 Evolución de FEV1")
 
-evolucion = get_patient_evolution(patient_id)
+        evolucion = get_patient_evolution(patient_id)
 
-valores = [e[1] for e in evolucion if e[1] is not None]
+        valores = [e[1] for e in evolucion if e[1] is not None]
 
-if len(valores) >= 2:
-    st.line_chart(valores)
+        if len(valores) >= 2:
+            st.line_chart(valores)
 
-    if valores[-1] > valores[0]:
-        st.success("Mejoría funcional del FEV1 📈")
-    elif valores[-1] < valores[0]:
-        st.error("Deterioro funcional del FEV1 📉")
-    else:
-        st.info("Sin cambios significativos")
+            if valores[-1] > valores[0]:
+                st.success("Mejoría funcional del FEV1 📈")
+            elif valores[-1] < valores[0]:
+                st.error("Deterioro funcional del FEV1 📉")
+            else:
+                st.info("Sin cambios significativos")
+        else:
+            st.info("Se requieren al menos 2 estudios válidos para evaluar evolución.")
+
 else:
-    st.info("Se requieren al menos 2 estudios válidos para evaluar evolución.")
+    st.info("No hay pacientes guardados aún.")
