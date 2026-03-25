@@ -5,6 +5,7 @@ from utils.calculations import *
 from services.interpretation import build_interpretation
 from services.spirometry_logic import ParameterResult  # 🔥 AQUÍ
 from services.pdf_generator import make_pdf, build_values_dataframe, build_summary_chart
+from services.database import init_db, save_patient, save_spirometry
 
 # Librerías necesarias
 import tempfile
@@ -29,6 +30,7 @@ st.set_page_config(
     layout="wide"
 )
 
+init_db()
 
 # ----------------------------
 # Utility helpers
@@ -287,6 +289,17 @@ if submitted:
         reproducibilidad=reproducibilidad,
         cooperacion=cooperacion
     )
+
+# 🔥 GUARDAR PACIENTE
+patient_id = save_patient(
+    nombre,
+    identificacion,
+    fecha_nacimiento.strftime("%Y-%m-%d") if fecha_nacimiento else "",
+    sexo
+)
+
+# 🔥 GUARDAR ESPIROMETRÍA
+save_spirometry(patient_id, interpretation)
 
     if nota_medica_manual.strip():
         interpretation["medical_comment"] += " " + nota_medica_manual.strip()
