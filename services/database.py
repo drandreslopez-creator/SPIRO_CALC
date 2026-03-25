@@ -12,9 +12,6 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # ----------------------------
-    # TABLA PACIENTES
-    # ----------------------------
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS patients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,25 +22,19 @@ def init_db():
     )
     """)
 
-    # ----------------------------
-    # TABLA ESPIROMETRÍAS (CON FEV1 PARA EVOLUCIÓN)
-    # ----------------------------
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS spirometry_reports (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         patient_id INTEGER,
         fecha TEXT,
-
         fev1 REAL,
         fvc REAL,
         ratio REAL,
-
         pattern TEXT,
         severity TEXT,
         semaforo TEXT,
         resultado TEXT,
         comentario TEXT,
-
         FOREIGN KEY(patient_id) REFERENCES patients(id)
     )
     """)
@@ -52,9 +43,6 @@ def init_db():
     conn.close()
 
 
-# ----------------------------
-# GUARDAR PACIENTE
-# ----------------------------
 def save_patient(nombre, identificacion, fecha_nacimiento, sexo):
     conn = get_connection()
     cursor = conn.cursor()
@@ -81,20 +69,18 @@ def save_patient(nombre, identificacion, fecha_nacimiento, sexo):
     return patient_id
 
 
-# ----------------------------
-# GUARDAR ESPIROMETRÍA
-# ----------------------------
 def save_spirometry(patient_id, interpretation, params):
     conn = get_connection()
     cursor = conn.cursor()
 
     fev1 = params.get("FEV1").measured_pre if params.get("FEV1") else None
-    fvc = params["FVC"].measured_pre if "FVC" in params else None
-    ratio = params["FEV1/FVC"].measured_pre if "FEV1/FVC" in params else None
+    fvc = params.get("FVC").measured_pre if params.get("FVC") else None
+    ratio = params.get("FEV1/FVC").measured_pre if params.get("FEV1/FVC") else None
 
     cursor.execute("""
     INSERT INTO spirometry_reports (
-        patient_id, fecha, fev1, fvc, ratio, pattern, severity, semaforo, resultado, comentario
+        patient_id, fecha, fev1, fvc, ratio,
+        pattern, severity, semaforo, resultado, comentario
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         patient_id,
@@ -113,9 +99,6 @@ def save_spirometry(patient_id, interpretation, params):
     conn.close()
 
 
-# ----------------------------
-# CONSULTAS
-# ----------------------------
 def get_all_patients():
     conn = get_connection()
     cursor = conn.cursor()
@@ -129,6 +112,7 @@ def get_all_patients():
     data = cursor.fetchall()
     conn.close()
     return data
+
 
 def get_patient_reports(patient_id):
     conn = get_connection()
