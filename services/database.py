@@ -88,7 +88,7 @@ def save_spirometry(patient_id, interpretation, params):
     conn = get_connection()
     cursor = conn.cursor()
 
-    fev1 = params["FEV1"].measured_pre if "FEV1" in params else None
+    fev1 = params.get("FEV1").measured_pre if params.get("FEV1") else None
     fvc = params["FVC"].measured_pre if "FVC" in params else None
     ratio = params["FEV1/FVC"].measured_pre if "FEV1/FVC" in params else None
 
@@ -130,16 +130,15 @@ def get_all_patients():
     conn.close()
     return data
 
-
 def get_patient_reports(patient_id):
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT fecha, pattern, severity, semaforo, resultado, comentario
+    SELECT fecha, fev1, fvc, ratio, pattern, severity, semaforo, resultado, comentario
     FROM spirometry_reports
     WHERE patient_id = ?
-    ORDER BY fecha DESC
+    ORDER BY fecha ASC
     """, (patient_id,))
 
     data = cursor.fetchall()
