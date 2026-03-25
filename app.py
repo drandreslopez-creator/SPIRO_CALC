@@ -290,7 +290,7 @@ if submitted:
         cooperacion=cooperacion
     )
 
-# 🔥 GUARDAR PACIENTE
+# ✅ AQUÍ VA (DENTRO DEL IF)
 patient_id = save_patient(
     nombre,
     identificacion,
@@ -298,8 +298,11 @@ patient_id = save_patient(
     sexo
 )
 
-# 🔥 GUARDAR ESPIROMETRÍA
 save_spirometry(patient_id, interpretation)
+
+# 🔽 ESTO SIGUE NORMAL
+if nota_medica_manual.strip():
+    interpretation["medical_comment"] += " " + nota_medica_manual.strip()
 
     if nota_medica_manual.strip():
         interpretation["medical_comment"] += " " + nota_medica_manual.strip()
