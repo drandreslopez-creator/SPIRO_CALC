@@ -279,7 +279,6 @@ if submitted:
 
     quality_text = f"Calidad {calidad.lower()}, reproducibilidad {reproducibilidad.lower()} y cooperación {cooperacion.lower()}."
 
-    # 🔥 INTERPRETACIÓN BIEN UBICADA
     interpretation = build_interpretation(
         edad_num,
         params,
@@ -290,23 +289,21 @@ if submitted:
         cooperacion=cooperacion
     )
 
-# ✅ AQUÍ VA (DENTRO DEL IF)
-patient_id = save_patient(
-    nombre,
-    identificacion,
-    fecha_nacimiento.strftime("%Y-%m-%d") if fecha_nacimiento else "",
-    sexo
-)
+    # 🔥 GUARDAR PACIENTE (CORRECTO)
+    patient_id = save_patient(
+        nombre,
+        identificacion,
+        fecha_nacimiento.strftime("%Y-%m-%d") if fecha_nacimiento else "",
+        sexo
+    )
 
-save_spirometry(patient_id, interpretation)
+    save_spirometry(patient_id, interpretation)
 
-# 🔽 ESTO SIGUE NORMAL
-if nota_medica_manual.strip():
-    interpretation["medical_comment"] += " " + nota_medica_manual.strip()
-
+    # 🔥 COMENTARIO MANUAL
     if nota_medica_manual.strip():
         interpretation["medical_comment"] += " " + nota_medica_manual.strip()
 
+    # ---------------- DATOS ----------------
     patient_dict = {
         "nombre": nombre,
         "identificacion": f"{id_tipo} {identificacion}".strip(),
@@ -339,6 +336,7 @@ if nota_medica_manual.strip():
         "curve_image_2": curve_image_2,
     }
 
+    # ---------------- GENERAR ----------------
     pdf_bytes = make_pdf(patient_dict, study_dict, params, interpretation, attachments)
     csv_bytes = build_values_dataframe(params).to_csv(index=False).encode("utf-8-sig")
 
@@ -357,8 +355,6 @@ if nota_medica_manual.strip():
             st.image(curve_image_2, caption="Curva volumen-tiempo")
 
     with tab2:
-
-        # 🔥 SEMÁFORO
         semaforo = interpretation.get("semaforo") or "⚠️ SIN CLASIFICAR"
 
         if "🟢" in semaforo:
