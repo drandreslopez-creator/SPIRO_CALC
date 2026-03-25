@@ -1,32 +1,20 @@
 from __future__ import annotations
 
-# ----------------------------
-# IMPORTS
-# ----------------------------
+# Módulos propios
 from utils.calculations import *
 from services.interpretation import build_interpretation
 from services.spirometry_logic import ParameterResult
 from services.pdf_generator import make_pdf, build_values_dataframe, build_summary_chart
-from services.database import (
-    init_db,
-    save_patient,
-    save_spirometry,
-    get_all_patients,
-    get_patient_reports
-)
 
+# Librerías necesarias
 from utils.gli import get_gli_reference
-
 from datetime import date
 from pathlib import Path
 from typing import Optional
 
-import pandas as pd
 import streamlit as st
 
-# ----------------------------
-# CONFIG
-# ----------------------------
+# Configuración
 APP_DIR = Path(__file__).resolve().parent
 LOGO_PATH = APP_DIR / "logo.png"
 
@@ -36,15 +24,14 @@ st.set_page_config(
     layout="wide"
 )
 
-init_db()
-
 # ----------------------------
-# HELPERS
+# Utility helpers
 # ----------------------------
 def age_in_years(dob: Optional[date]) -> Optional[float]:
     if not dob:
         return None
-    return round((date.today() - dob).days / 365.25, 2)
+    today = date.today()
+    return round((today - dob).days / 365.25, 2)
 
 
 def age_text(dob: Optional[date]) -> str:
@@ -53,16 +40,24 @@ def age_text(dob: Optional[date]) -> str:
     today = date.today()
     years = today.year - dob.year
     months = today.month - dob.month
-
     if today.day < dob.day:
         months -= 1
     if months < 0:
         years -= 1
         months += 12
 
-    return f"{years} años {months} meses"
+    parts = []
+    if years > 0:
+        parts.append(f"{years} año{'s' if years != 1 else ''}")
+    if months > 0 or not parts:
+        parts.append(f"{months} mes{'es' if months != 1 else ''}")
+
+    return " y ".join(parts)
 
 
+# ----------------------------
+# GLI
+# ----------------------------
 def calcular_predichos_lln(rows_data, edad, sexo, talla, etnia):
 
     if edad is None or sexo not in ["Femenino", "Masculino"] or talla is None:
@@ -71,7 +66,6 @@ def calcular_predichos_lln(rows_data, edad, sexo, talla, etnia):
     rows_updated = {}
 
     for name, row in rows_data.items():
-
         gli = get_gli_reference(name, edad, talla, sexo, etnia)
 
         updated = row.copy()
@@ -91,14 +85,22 @@ with st.sidebar:
         st.image(str(LOGO_PATH), use_container_width=True)
 
     st.markdown("### Consultorio Dr. Andrés López Ruiz")
-    st.caption("Médico Pediatra · Espirometría")
-    st.info("Interpretación orientativa, correlacionar clínicamente.")
+    st.caption("Médico Pediatra · Generador de reportes de espirometría")
 
+    st.markdown(
+        "Este aplicativo crea un reporte imprimible en PDF con tabla de resultados, "
+        "interpretación técnica y comentario médico."
+    )
+
+    st.info(
+        "La interpretación automática es una ayuda clínica. Debe correlacionarse con la evaluación médica."
+    )
 
 # ----------------------------
-# UI PRINCIPAL
+# UI
 # ----------------------------
 st.title("🫁 Reporte profesional de espirometría")
+st.write("Ingrese los datos del paciente y los parámetros espirométricos.")
 
 # ----------------------------
 # FORM
@@ -125,7 +127,6 @@ with st.form("spirometry_form"):
     peso = c9.number_input("Peso", value=None)
     talla = c10.number_input("Talla", value=None)
 
-    # ---------------- VALORES ----------------
     st.subheader("Valores espirométricos")
 
     param_config = [
@@ -149,7 +150,7 @@ with st.form("spirometry_form"):
             "post": None,
         }
 
-    submitted = st.form_submit_button("Generar")
+    submitted = st.form_submit_button("Generar reporte")
 
 # ----------------------------
 # PROCESO
@@ -181,55 +182,7 @@ if submitted:
         fumador=fumador
     )
 
-    patient_id = save_patient(
-        nombre,
-        identificacion,
-        fecha_nacimiento.strftime("%Y-%m-%d") if fecha_nacimiento else "",
-        sexo
-    )
+    st.success("Reporte generado correctamente")
 
-    # 🔥 CORREGIDO
-    save_spirometry(patient_id, interpretation, params)
-
-    st.success("Guardado correctamente")
-
-# ----------------------------
-# HISTORIAL
-# ----------------------------
-st.divider()
-st.subheader("🧑‍⚕️ Historial de pacientes")
-
-patients = get_all_patients()
-
-if patients:
-
-    opciones = {f"{p[1]} ({p[2]})": p[0] for p in patients}
-    paciente_sel = st.selectbox("Seleccionar paciente", list(opciones.keys()))
-
-    if paciente_sel:
-        patient_id = opciones[paciente_sel]
-
-        reports = get_patient_reports(patient_id)
-
-        if reports:
-            fechas = []
-            fev1_vals = []
-
-            for r in reports:
-                fechas.append(r[0])
-                fev1_vals.append(r[1])
-
-                st.markdown("---")
-                st.write(f"📅 {r[0]}")
-                st.write(f"FEV1: {r[1]}")
-                st.write(f"Patrón: {r[4]}")
-                st.write(f"Severidad: {r[5]}")
-
-            df = pd.DataFrame({"Fecha": fechas, "FEV1": fev1_vals})
-            st.line_chart(df.set_index("Fecha"))
-
-        else:
-            st.info("Sin estudios")
-
-else:
-    st.info("No hay pacientes")
+    st.write(interpretation["technical_report"])
+    st.write(interpretation["medical_comment"])
