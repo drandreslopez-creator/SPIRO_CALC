@@ -303,7 +303,7 @@ if submitted:
         sexo
     )
 
-    save_spirometry(patient_id, interpretation)
+    save_spirometry(patient_id, interpretation, params)
 
     # 🔥 COMENTARIO MANUAL
     if nota_medica_manual.strip():
@@ -423,18 +423,21 @@ if patients:
     if paciente_sel:
         patient_id = opciones[paciente_sel]
 
-        reports = get_patient_reports(patient_id)
+if reports:
+    fechas = []
+    fev1_vals = []
 
-        if reports:
-            for r in reports:
-                st.markdown("---")
-                st.write(f"📅 Fecha: {r[0]}")
-                st.write(f"🫁 Patrón: {r[1]}")
-                st.write(f"📊 Severidad: {r[2]}")
-                st.write(f"🚦 Semáforo: {r[3]}")
-                st.write(f"🧾 Resultado: {r[4]}")
-                st.write(f"💬 Comentario: {r[5]}")
-        else:
-            st.info("Este paciente no tiene estudios registrados.")
-else:
-    st.info("No hay pacientes guardados aún.")
+    for r in reports:
+        fechas.append(r[0])
+        fev1_vals.append(r[1])  # FEV1
+
+        st.markdown("---")
+        st.write(f"📅 Fecha: {r[0]}")
+        st.write(f"FEV1: {r[1]}")
+        st.write(f"Patrón: {r[4]}")
+        st.write(f"Severidad: {r[5]}")
+
+    # 📈 gráfica evolución
+    import pandas as pd
+    df = pd.DataFrame({"Fecha": fechas, "FEV1": fev1_vals})
+    st.line_chart(df.set_index("Fecha"))
