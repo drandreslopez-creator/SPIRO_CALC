@@ -85,3 +85,34 @@ def save_spirometry(patient_id, interpretation):
 
     conn.commit()
     conn.close()
+
+
+# ----------------------------
+# 🔥 CONSULTAS (HISTORIAL)
+# ----------------------------
+
+def get_all_patients():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id, nombre, identificacion FROM patients ORDER BY nombre")
+    data = cursor.fetchall()
+
+    conn.close()
+    return data
+
+
+def get_patient_reports(patient_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT fecha, pattern, severity, semaforo, resultado, comentario
+    FROM spirometry_reports
+    WHERE patient_id = ?
+    ORDER BY fecha DESC
+    """, (patient_id,))
+
+    data = cursor.fetchall()
+    conn.close()
+    return data
