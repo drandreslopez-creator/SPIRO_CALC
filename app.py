@@ -10,8 +10,7 @@ from services.database import (
     save_patient,
     save_spirometry,
     get_all_patients,
-    get_patient_reports,
-    get_patient_evolution  # 🔥 NUEVO
+    get_patient_reports
 )
 
 # Librerías necesarias
@@ -304,7 +303,7 @@ if submitted:
         sexo
     )
 
-    save_spirometry(patient_id, interpretation, params)
+    save_spirometry(patient_id, interpretation)
 
     # 🔥 COMENTARIO MANUAL
     if nota_medica_manual.strip():
@@ -424,9 +423,6 @@ if patients:
     if paciente_sel:
         patient_id = opciones[paciente_sel]
 
-        # ----------------------------
-        # 📋 REPORTES
-        # ----------------------------
         reports = get_patient_reports(patient_id)
 
         if reports:
@@ -440,31 +436,5 @@ if patients:
                 st.write(f"💬 Comentario: {r[5]}")
         else:
             st.info("Este paciente no tiene estudios registrados.")
-
-        # ----------------------------
-        # 📈 EVOLUCIÓN DE FEV1
-        # ----------------------------
-        st.markdown("### 📈 Evolución de FEV1")
-
-        try:
-            evolucion = get_patient_evolution(patient_id)
-
-            valores = [e[1] for e in evolucion if e[1] is not None]
-
-            if len(valores) >= 2:
-                st.line_chart(valores)
-
-                if valores[-1] > valores[0]:
-                    st.success("Mejoría funcional del FEV1 📈")
-                elif valores[-1] < valores[0]:
-                    st.error("Deterioro funcional del FEV1 📉")
-                else:
-                    st.info("Sin cambios significativos")
-            else:
-                st.info("Se requieren al menos 2 estudios válidos para evaluar evolución.")
-
-        except Exception as e:
-            st.error("Error al cargar evolución. Probablemente debes reiniciar la base de datos.")
-
 else:
     st.info("No hay pacientes guardados aún.")
