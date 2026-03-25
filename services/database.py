@@ -145,22 +145,3 @@ def get_patient_reports(patient_id):
     data = cursor.fetchall()
     conn.close()
     return data
-
-
-# ----------------------------
-# 📈 EVOLUCIÓN
-# ----------------------------
-def get_patient_evolution(patient_id):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT fecha, fev1
-    FROM spirometry_reports
-    WHERE patient_id = ?
-    ORDER BY fecha
-    """, (patient_id,))
-
-    data = cursor.fetchall()
-    conn.close()
-    return data
