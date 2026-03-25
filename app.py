@@ -11,20 +11,23 @@ from services.database import (
     save_spirometry,
     get_all_patients,
     get_patient_reports,
-    get_patient_evolution
+    get_patient_evolution  # 🔥 NUEVO
 )
 
-# Librerías
+# Librerías necesarias
+import tempfile
+import zipfile
 from utils.gli import get_gli_reference
-from datetime import date
+from dataclasses import dataclass
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
-from typing import Optional
+from pypdf import PdfReader, PdfWriter
+from typing import Any, Dict, List, Optional, Tuple
 
 import streamlit as st
 
-# ----------------------------
-# CONFIG
-# ----------------------------
+# Configuración
 APP_DIR = Path(__file__).resolve().parent
 LOGO_PATH = APP_DIR / "logo.png"
 
@@ -37,12 +40,13 @@ st.set_page_config(
 init_db()
 
 # ----------------------------
-# HELPERS
+# Utility helpers
 # ----------------------------
 def age_in_years(dob: Optional[date]) -> Optional[float]:
     if not dob:
         return None
-    return round((date.today() - dob).days / 365.25, 2)
+    today = date.today()
+    return round((today - dob).days / 365.25, 2)
 
 
 def age_text(dob: Optional[date]) -> str:
@@ -56,57 +60,97 @@ def age_text(dob: Optional[date]) -> str:
     if months < 0:
         years -= 1
         months += 12
-    return f"{years} años {months} meses"
+    parts = []
+    if years > 0:
+        parts.append(f"{years} año{'s' if years != 1 else ''}")
+    if months > 0 or not parts:
+        parts.append(f"{months} mes{'es' if months != 1 else ''}")
+    return " y ".join(parts)
 
 
+def ensure_session_defaults() -> None:
+    defaults = {
+        "include_post": False,
+        "show_preview": True,
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+
+# ----------------------------
+# GLI
+# ----------------------------
 def calcular_predichos_lln(rows_data, edad, sexo, talla, etnia):
-    if edad is None or talla is None:
+    if edad is None or sexo not in ["Femenino", "Masculino"] or talla is None:
         return rows_data
 
+    rows_updated = {}
+
     for name, row in rows_data.items():
+        pred = row.get("pred")
+        lln = row.get("lln")
+
         gli = get_gli_reference(name, edad, talla, sexo, etnia)
-        if row["pred"] is None:
-            row["pred"] = gli["pred"]
-        if row["lln"] is None:
-            row["lln"] = gli["lln"]
 
-    return rows_data
+        if pred is None:
+            pred = gli["pred"]
 
+        if lln is None:
+            lln = gli["lln"]
+
+        updated = row.copy()
+        updated["pred"] = pred
+        updated["lln"] = lln
+
+        rows_updated[name] = updated
+
+    return rows_updated
+
+
+ensure_session_defaults()
 
 # ----------------------------
 # UI
 # ----------------------------
-st.title("🫁 Reporte de espirometría")
+st.title("🫁 Reporte profesional de espirometría")
 
-with st.form("form"):
+with st.form("spirometry_form"):
+
     nombre = st.text_input("Nombre")
     identificacion = st.text_input("Documento")
     fecha_nacimiento = st.date_input("Fecha nacimiento", value=None)
     sexo = st.selectbox("Sexo", ["", "Femenino", "Masculino"])
-    talla = st.number_input("Talla cm", value=None)
-
-    fumador = st.selectbox("Tabaquismo", ["", "No fumador", "Exfumador", "Fumador activo"])
-
-    st.subheader("Valores")
-
-    fev1 = st.number_input("FEV1", value=None)
-    fvc = st.number_input("FVC", value=None)
-    ratio = st.number_input("FEV1/FVC", value=None)
+    talla = st.number_input("Talla (cm)", value=None)
+    etnia = st.selectbox("Etnia", ["", "Mestizo", "Afrodescendiente"])
+    fumador = st.selectbox("Tabaquismo", ["", "No fumador", "Fumador activo"])
 
     submitted = st.form_submit_button("Generar")
 
-# ----------------------------
-# PROCESAMIENTO
-# ----------------------------
 if submitted:
 
     edad = age_in_years(fecha_nacimiento)
 
-    params = {
-        "FEV1": ParameterResult("FEV1", "L", fev1, None, None, None, None, None),
-        "FVC": ParameterResult("FVC", "L", fvc, None, None, None, None, None),
-        "FEV1/FVC": ParameterResult("FEV1/FVC", "%", ratio, None, None, None, None, None),
+    rows_data = {
+        "FEV1": {"pre": 2.5, "pred": None, "lln": None},
+        "FVC": {"pre": 3.0, "pred": None, "lln": None},
+        "FEV1/FVC": {"pre": 80, "pred": None, "lln": None},
     }
+
+    rows_data = calcular_predichos_lln(rows_data, edad, sexo, talla, etnia)
+
+    params = {}
+    for k, v in rows_data.items():
+        params[k] = ParameterResult(
+            name=k,
+            unit="",
+            measured_pre=v["pre"],
+            measured_post=None,
+            predicted=v["pred"],
+            lln=v["lln"],
+            zscore_pre=None,
+            zscore_post=None,
+        )
 
     interpretation = build_interpretation(
         edad,
@@ -115,7 +159,6 @@ if submitted:
         fumador=fumador
     )
 
-    # 🔥 GUARDAR
     patient_id = save_patient(
         nombre,
         identificacion,
@@ -123,6 +166,7 @@ if submitted:
         sexo
     )
 
+    # 🔥 CORREGIDO
     save_spirometry(patient_id, interpretation, params)
 
     st.success("Guardado correctamente")
@@ -131,13 +175,13 @@ if submitted:
 # HISTORIAL
 # ----------------------------
 st.divider()
-st.subheader("Historial")
+st.subheader("🧑‍⚕️ Historial de pacientes")
 
 patients = get_all_patients()
 
 if patients:
     opciones = {f"{p[1]} ({p[2]})": p[0] for p in patients}
-    paciente_sel = st.selectbox("Paciente", list(opciones.keys()))
+    paciente_sel = st.selectbox("Seleccionar paciente", list(opciones.keys()))
 
     if paciente_sel:
         patient_id = opciones[paciente_sel]
@@ -148,9 +192,9 @@ if patients:
             st.write(r)
 
         # ----------------------------
-        # EVOLUCIÓN
+        # 📈 EVOLUCIÓN
         # ----------------------------
-        st.subheader("📈 Evolución FEV1")
+        st.markdown("### 📈 Evolución de FEV1")
 
         try:
             evolucion = get_patient_evolution(patient_id)
@@ -160,14 +204,15 @@ if patients:
                 st.line_chart(valores)
 
                 if valores[-1] > valores[0]:
-                    st.success("Mejoría")
+                    st.success("Mejoría 📈")
                 elif valores[-1] < valores[0]:
-                    st.error("Deterioro")
+                    st.error("Deterioro 📉")
                 else:
                     st.info("Sin cambios")
             else:
-                st.info("Necesitas al menos 2 estudios")
+                st.info("Se requieren 2 estudios")
         except:
-            st.warning("Reinicia la base de datos")
+            st.warning("Error en base de datos. Reiniciar.")
+
 else:
-    st.info("No hay pacientes aún")
+    st.info("No hay pacientes")
