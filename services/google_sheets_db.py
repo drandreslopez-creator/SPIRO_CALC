@@ -4,7 +4,7 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 
 # 🔐 CONFIG
-SHEET_NAME = "Espirometrias"
+SHEET_NAME = "Espirometrías"
 
 scope = [
     "https://www.googleapis.com/auth/spreadsheets",
