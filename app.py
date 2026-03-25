@@ -10,7 +10,8 @@ from services.database import (
     save_patient,
     save_spirometry,
     get_all_patients,
-    get_patient_reports
+    get_patient_reports,
+    get_patient_evolution  # 🔥 NUEVO
 )
 
 # Librerías necesarias
@@ -436,5 +437,29 @@ if patients:
                 st.write(f"💬 Comentario: {r[5]}")
         else:
             st.info("Este paciente no tiene estudios registrados.")
+
+        # ----------------------------
+        # 📈 EVOLUCIÓN DE FEV1
+        # ----------------------------
+        st.markdown("### 📈 Evolución de FEV1")
+
+        evolucion = get_patient_evolution(patient_id)
+
+        if len(evolucion) >= 2:
+            fechas = [e[0] for e in evolucion]
+            valores = [e[1] for e in evolucion]
+
+            st.line_chart(valores)
+
+            # 🔥 INTERPRETACIÓN AUTOMÁTICA
+            if valores[-1] > valores[0]:
+                st.success("Mejoría funcional del FEV1 📈")
+            elif valores[-1] < valores[0]:
+                st.error("Deterioro funcional del FEV1 📉")
+            else:
+                st.info("Sin cambios significativos")
+        else:
+            st.info("Se requieren al menos 2 estudios para evaluar evolución.")
+
 else:
     st.info("No hay pacientes guardados aún.")
