@@ -6,6 +6,14 @@ from services.interpretation import build_interpretation
 from services.spirometry_logic import ParameterResult  # 🔥 AQUÍ
 from services.pdf_generator import make_pdf, build_values_dataframe, build_summary_chart
 
+# 🔥 NUEVO (Google Sheets)
+from services.google_sheets_db import (
+    save_patient,
+    save_spirometry,
+    get_all_patients,
+    get_patient_reports
+)
+
 # Librerías necesarias
 import tempfile
 import zipfile
@@ -255,7 +263,6 @@ if submitted:
     edad_num = age_in_years(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else None
     edad_txt = age_text(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else ""
 
-    # Calcular predichos
     rows_data = calcular_predichos_lln(rows_data, edad_num, sexo, talla, etnia)
 
     params = {}
@@ -285,6 +292,22 @@ if submitted:
         reproducibilidad=reproducibilidad,
         cooperacion=cooperacion
     )
+
+    # 🔥 GUARDAR EN GOOGLE SHEETS (AHORA BIEN INDENTADO)
+    try:
+        patient_id = save_patient(
+            nombre,
+            identificacion,
+            fecha_nacimiento.strftime("%Y-%m-%d") if fecha_nacimiento else "",
+            sexo
+        )
+
+        save_spirometry(patient_id, interpretation)
+
+        st.success("✅ Datos guardados en Google Sheets")
+
+    except Exception as e:
+        st.error(f"❌ Error guardando en Google Sheets: {e}")
 
     # 🔥 COMENTARIO MANUAL
     if nota_medica_manual.strip():
