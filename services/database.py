@@ -27,9 +27,6 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         patient_id INTEGER,
         fecha TEXT,
-        fev1 REAL,
-        fvc REAL,
-        ratio REAL,
         pattern TEXT,
         severity TEXT,
         semaforo TEXT,
@@ -47,16 +44,15 @@ def save_patient(nombre, identificacion, fecha_nacimiento, sexo):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT id FROM patients WHERE identificacion = ?",
-        (identificacion,)
-    )
+    # 🔥 Buscar si ya existe
+    cursor.execute("SELECT id FROM patients WHERE identificacion = ?", (identificacion,))
     result = cursor.fetchone()
 
     if result:
         conn.close()
         return result[0]
 
+    # 🔥 Insertar nuevo paciente
     cursor.execute("""
     INSERT INTO patients (nombre, identificacion, fecha_nacimiento, sexo)
     VALUES (?, ?, ?, ?)
@@ -69,25 +65,17 @@ def save_patient(nombre, identificacion, fecha_nacimiento, sexo):
     return patient_id
 
 
-def save_spirometry(patient_id, interpretation, params):
+def save_spirometry(patient_id, interpretation):
     conn = get_connection()
     cursor = conn.cursor()
 
-    fev1 = params.get("FEV1").measured_pre if params.get("FEV1") else None
-    fvc = params.get("FVC").measured_pre if params.get("FVC") else None
-    ratio = params.get("FEV1/FVC").measured_pre if params.get("FEV1/FVC") else None
-
     cursor.execute("""
     INSERT INTO spirometry_reports (
-        patient_id, fecha, fev1, fvc, ratio,
-        pattern, severity, semaforo, resultado, comentario
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        patient_id, fecha, pattern, severity, semaforo, resultado, comentario
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
         patient_id,
         datetime.now().strftime("%Y-%m-%d %H:%M"),
-        fev1,
-        fvc,
-        ratio,
         interpretation.get("pattern"),
         interpretation.get("severity"),
         interpretation.get("semaforo"),
@@ -99,17 +87,17 @@ def save_spirometry(patient_id, interpretation, params):
     conn.close()
 
 
+# ----------------------------
+# 🔥 CONSULTAS (HISTORIAL)
+# ----------------------------
+
 def get_all_patients():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-    SELECT id, nombre, identificacion
-    FROM patients
-    ORDER BY nombre
-    """)
-
+    cursor.execute("SELECT id, nombre, identificacion FROM patients ORDER BY nombre")
     data = cursor.fetchall()
+
     conn.close()
     return data
 
@@ -119,12 +107,41 @@ def get_patient_reports(patient_id):
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT fecha, fev1, fvc, ratio, pattern, severity, semaforo, resultado, comentario
+    SELECT fecha, pattern, severity, semaforo, resultado, comentario
     FROM spirometry_reports
     WHERE patient_id = ?
-    ORDER BY fecha ASC
+    ORDER BY fecha DESC
     """, (patient_id,))
 
     data = cursor.fetchall()
     conn.close()
     return data
+
+st.divider()
+st.subheader("🧑‍⚕️ Historial de pacientes")
+
+patients = get_all_patients()
+
+if patients:
+    opciones = {f"{p[1]} ({p[2]})": p[0] for p in patients}
+
+    paciente_sel = st.selectbox("Seleccionar paciente", list(opciones.keys()))
+
+    if paciente_sel:
+        patient_id = opciones[paciente_sel]
+
+        reports = get_patient_reports(patient_id)
+
+        if reports:
+            for r in reports:
+                st.markdown("---")
+                st.write(f"📅 Fecha: {r[0]}")
+                st.write(f"🫁 Patrón: {r[1]}")
+                st.write(f"📊 Severidad: {r[2]}")
+                st.write(f"🚦 Semáforo: {r[3]}")
+                st.write(f"🧾 Resultado: {r[4]}")
+                st.write(f"💬 Comentario: {r[5]}")
+        else:
+            st.info("Este paciente no tiene estudios registrados.")
+else:
+    st.info("No hay pacientes guardados aún.")
