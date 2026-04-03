@@ -78,27 +78,32 @@ def ensure_session_defaults() -> None:
 # ----------------------------
 # Función para calcular predichos y LLN
 # ----------------------------
-def calcular_predichos_lln(rows_data: dict, edad: Optional[float], sexo: str, talla: Optional[float], etnia: str) -> dict:
-
-    if edad is None or sexo not in ["Femenino", "Masculino"] or talla is None:
-        return rows_data
+def calcular_predichos_lln(rows_data, edad, sexo, talla, etnia):
 
     rows_updated = {}
 
     for name, row in rows_data.items():
 
-        pred = row.get("pred")
+        pred = row.get("pred")   # 🔥 RESPETA EL QUE INGRESAS
         lln = row.get("lln")
 
-        # 🔥 GLI BIEN UBICADO
-        gli = get_gli_reference(name, edad, talla, sexo, etnia)
+        # 🔥 SOLO USAR GLI PARA LLN (NO PARA PREDICHO)
+        try:
+            gli = get_gli_reference(name, edad, talla, sexo, etnia)
 
-        if pred is None:
-            pred = gli["pred"]
+            if lln is None:
+                lln = gli.get("lln")
 
-        if lln is None:
-            lln = gli["lln"]
+        except:
+            pass  # si falla GLI no pasa nada
 
+        updated_row = row.copy()
+        updated_row["pred"] = pred
+        updated_row["lln"] = lln
+
+        rows_updated[name] = updated_row
+
+    return rows_updated
         updated_row = row.copy()
         updated_row["pred"] = pred
         updated_row["lln"] = lln
