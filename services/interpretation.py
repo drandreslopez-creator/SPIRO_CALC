@@ -170,7 +170,7 @@ def build_interpretation(
         comments.append("No se evidencian alteraciones ventilatorias significativas.")
 
     if fef2575 and fef2575.pct_pred_pre is not None and fef2575.pct_pred_pre < 65:
-        comments.append("FEF25-75 reducido lo que puede estar relacionado a disminución de flujos de vías aéreas pequeñas (allazgo inespecífico que debe interpretarse con cautela y en contexto clínico.")
+        comments.append("FEF25-75 reducido lo que puede estar relacionado a disminución de flujos de vías aéreas pequeñas (hallazgo inespecífico que debe interpretarse con cautela y en contexto clínico.")
 
     broncho_status = "No realizado"
     broncho_note = "No se realizó prueba broncodilatadora."
