@@ -15,10 +15,17 @@ def lower_limit_ratio(age_years: Optional[float]) -> float:
 def is_below_lln(value: Optional[float], lln: Optional[float], fallback: Optional[float] = None) -> bool:
     if value is None:
         return False
+
+    # 🔥 EVITAR ERROR CON "N/A"
+    if isinstance(lln, str):
+        lln = None
+
     if lln is not None:
         return value < lln
+
     if fallback is not None:
         return value < fallback
+
     return False
 
 
