@@ -84,25 +84,35 @@ def calcular_predichos_lln(rows_data: dict, edad, sexo, talla, etnia):
 
     for name, row in rows_data.items():
 
-        pred = row.get("pred")   # 🔥 RESPETA EL DE LA MÁQUINA
+        pred = row.get("pred")
         lln = row.get("lln")
 
-        # 🔥 INTENTAR CALCULAR LLN CON GLI (solo si aplica)
+        # 🔥 CALCULAR LLN CON GLI
         try:
             gli = get_gli_reference(name, edad, talla, sexo, etnia)
 
-            if lln is None and gli:
-                lln = gli.get("lln")
+            if gli:
+
+                # 1️⃣ Si GLI trae LLN directo
+                if lln is None and gli.get("lln") is not None:
+                    lln = gli.get("lln")
+
+                # 2️⃣ SI NO → calcular con SD
+                elif lln is None and gli.get("pred") and gli.get("sd"):
+                    try:
+                        lln = gli["pred"] - (1.64 * gli["sd"])
+                    except:
+                        lln = None
 
         except:
-            pass  # no rompe si falla GLI
+            pass
 
         updated_row = row.copy()
         updated_row["pred"] = pred
 
-        # 🔥 LLN SOLO PARA PARÁMETROS VÁLIDOS
+        # 🔥 SOLO PARA PARÁMETROS PRINCIPALES
         if name in ["FVC", "FEV1", "FEV1/FVC"]:
-            updated_row["lln"] = lln if lln is not None else "N/A"
+            updated_row["lln"] = round(lln, 2) if isinstance(lln, (int, float)) else "N/A"
         else:
             updated_row["lln"] = "N/A"
 
