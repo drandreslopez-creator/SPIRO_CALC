@@ -173,7 +173,7 @@ def build_interpretation(
     if fev1 and fvc and (fev1.measured_post or fvc.measured_post):
         broncho_status, broncho_note = bronchodilator_response(fev1, fvc, age_years)
 
-    technical_report = f"{quality_text}. {pattern}"
+    technical_report = f"{quality_text.rstrip('.')}.\n{pattern.upper()}"
     medical_comment = " ".join(comments + [broncho_note])
 
     return {
