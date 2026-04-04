@@ -87,20 +87,32 @@ def calcular_predichos_lln(rows_data: dict, edad, sexo, talla, etnia):
         pred = row.get("pred")
         lln = row.get("lln")
 
-        # 🔥 CALCULAR LLN CON GLI
+        # 🔥 MAPEO CORRECTO PARA GLI
+        gli_name = name
+        if name == "FEV1/FVC":
+            gli_name = "FEV1FVC"
+
         try:
-            gli = get_gli_reference(name, edad, talla, sexo, etnia)
+            gli = get_gli_reference(gli_name, edad, talla, sexo, etnia)
 
             if gli:
 
-                # 1️⃣ Si GLI trae LLN directo
-                if lln is None and gli.get("lln") is not None:
-                    lln = gli.get("lln")
-
-                # 2️⃣ SI NO → calcular con SD
-                elif lln is None and gli.get("pred") and gli.get("sd"):
+                # 🔥 FORZAR CÁLCULO DE LLN (NO DEPENDER DE GLI)
+                if lln is None and gli.get("pred") and gli.get("z") is not None:
                     try:
-                        lln = gli["pred"] - (1.64 * gli["sd"])
+                        # 🔥 USAMOS Z-SCORE (MEJOR QUE SD)
+                        z = gli.get("z")
+                        pred_gli = gli.get("pred")
+
+                        # aproximación: LLN usando Z -1.64
+                        # asumimos distribución normal
+                        # si ya tienes z del paciente, mejor usar SD
+
+                        if gli.get("sd"):
+                            lln = pred_gli - (1.64 * gli["sd"])
+                        else:
+                            lln = None
+
                     except:
                         lln = None
 
@@ -110,7 +122,7 @@ def calcular_predichos_lln(rows_data: dict, edad, sexo, talla, etnia):
         updated_row = row.copy()
         updated_row["pred"] = pred
 
-        # 🔥 SOLO PARA PARÁMETROS PRINCIPALES
+        # 🔥 SOLO PRINCIPALES
         if name in ["FVC", "FEV1", "FEV1/FVC"]:
             updated_row["lln"] = round(lln, 2) if isinstance(lln, (int, float)) else "N/A"
         else:
