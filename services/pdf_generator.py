@@ -275,11 +275,11 @@ def make_pdf(patient, study, params, interpretation, attachments):
     story.append(Paragraph("4. Interpretación", styles["XSection"]))
 
     t3 = Table([
-        ["Severidad", Paragraph(interpretation.get("severity",""), styles["XSmall"])],
-        ["Respuesta broncodilatadora", Paragraph(interpretation.get("bronchodilator",""), styles["XSmall"])],
-        ["Reporte técnico", Paragraph(interpretation.get("technical_report",""), styles["Justify"])],
-        ["Comentario médico", Paragraph(interpretation.get("medical_comment",""), styles["Justify"])],
-    ], colWidths=[5*cm,13*cm])
+    ["Reporte técnico", Paragraph(interpretation.get("technical_report",""), styles["Justify"])],
+    ["Comentario médico", Paragraph(interpretation.get("medical_comment",""), styles["Justify"])],
+    ["Severidad", Paragraph(interpretation.get("severity",""), styles["XSmall"])],
+    ["Respuesta broncodilatadora", Paragraph(interpretation.get("bronchodilator",""), styles["XSmall"])],
+], colWidths=[5*cm,13*cm])
 
     t3.setStyle(TableStyle([
         ("GRID",(0,0),(-1,-1),0.3,colors.grey),
