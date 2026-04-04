@@ -82,36 +82,28 @@ def calcular_predichos_lln(rows_data: dict, edad, sexo, talla, etnia):
 
     rows_updated = {}
 
-    # 🔥 NORMALIZACIÓN CLAVE
-    talla_m = talla / 100 if talla else None
-
-    sexo_map = {
-        "Masculino": "M",
-        "Femenino": "F"
-    }
-    sexo_gli = sexo_map.get(sexo, None)
-
     for name, row in rows_data.items():
 
         pred = row.get("pred")
         lln = row.get("lln")
+        measured = row.get("pre")
 
-        gli_name = name
-        if name == "FEV1/FVC":
-            gli_name = "FEV1FVC"
-
+        # 🔥 CALCULAR LLN USANDO Z-SCORE (MÁS ROBUSTO)
         try:
-            gli = get_gli_reference(gli_name, edad, talla_m, sexo_gli, etnia)
+            if pred and measured:
 
-            if gli and lln is None:
+                # calculamos z del paciente
+                z = calculate_zscore(measured, pred, name)
 
-                # 🔥 CASO 1: LLN directo
-                if gli.get("lln") is not None:
-                    lln = gli["lln"]
+                # si hay z válido → reconstruimos SD
+                if z is not None and z != 0:
+                    sd = (measured - pred) / z
 
-                # 🔥 CASO 2: CALCULAR LLN CON SD
-                elif gli.get("pred") and gli.get("sd"):
-                    lln = gli["pred"] - (1.64 * gli["sd"])
+                    # LLN corresponde a z = -1.64
+                    lln_calc = pred + (-1.64 * sd)
+
+                    if isinstance(lln_calc, (int, float)):
+                        lln = lln_calc
 
         except:
             pass
@@ -119,6 +111,7 @@ def calcular_predichos_lln(rows_data: dict, edad, sexo, talla, etnia):
         updated_row = row.copy()
         updated_row["pred"] = pred
 
+        # 🔥 SOLO PRINCIPALES
         if name in ["FVC", "FEV1", "FEV1/FVC"]:
             updated_row["lln"] = round(lln, 2) if isinstance(lln, (int, float)) else "N/A"
         else:
