@@ -169,8 +169,24 @@ def build_interpretation(
     else:
         comments.append("No se evidencian alteraciones ventilatorias significativas.")
 
-    if fef2575 and fef2575.pct_pred_pre is not None and fef2575.pct_pred_pre < 65:
-        comments.append("FEF25-75 reducido lo que puede estar relacionado a disminución de flujos de vías aéreas pequeñas (hallazgo inespecífico que debe interpretarse con cautela y en contexto clínico.")
+    # 🔥 FLUJOS MEDIOS SEGUROS (SIN ERRORES)
+try:
+    pct_fef = getattr(fef2575, "pct_pred_pre", None)
+
+    if pct_fef is not None and pct_fef < 65:
+        comments.append(
+            "Disminución de flujos de vías aéreas pequeñas (FEF25-75 reducido), "
+            "hallazgo inespecífico que debe interpretarse con cautela y en contexto clínico."
+        )
+
+        # 🔥 SOLO SI TODO LO DEMÁS ES NORMAL
+        if not ratio_low and not fvc_low and not fev1_low:
+            comments.append(
+                "Este hallazgo aislado no es suficiente para establecer diagnóstico de enfermedad obstructiva."
+            )
+
+except:
+    pass
 
     broncho_status = "No realizado"
     broncho_note = "No se realizó prueba broncodilatadora."
