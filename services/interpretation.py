@@ -151,7 +151,7 @@ def build_interpretation(
     else:
         comments.append("No se evidencian alteraciones ventilatorias significativas.")
 
-    # 🔥 BLOQUE CORREGIDO (BIEN INDENTADO)
+        # 🔥 BLOQUE CORREGIDO (BIEN INDENTADO)
     try:
         pct_fef = getattr(fef2575, "pct_pred_pre", None)
 
@@ -173,8 +173,16 @@ def build_interpretation(
     if fev1 and fvc and (fev1.measured_post or fvc.measured_post):
         broncho_status, broncho_note = bronchodilator_response(fev1, fvc, age_years)
 
-    technical_report = f"{quality_text.rstrip('.')}.\n{pattern.upper()}"
-    medical_comment = " ".join(comments + [broncho_note])
+    # 🔥 REPORTE TÉCNICO LIMPIO (BIEN INDENTADO)
+    technical_report = f"{quality_text.rstrip('.')}. {broncho_note}"
+
+    # 🔥 COMENTARIO MÉDICO CORRECTO (ROBUSTO)
+    medical_comment = " ".join(comments).strip().rstrip('.')
+
+    if medical_comment:
+        medical_comment = f"{medical_comment}. {pattern.upper()}."
+    else:
+        medical_comment = f"{pattern.upper()}."
 
     return {
         "pattern": pattern,
