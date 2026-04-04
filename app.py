@@ -82,39 +82,36 @@ def calcular_predichos_lln(rows_data: dict, edad, sexo, talla, etnia):
 
     rows_updated = {}
 
+    # 🔥 NORMALIZACIÓN CLAVE
+    talla_m = talla / 100 if talla else None
+
+    sexo_map = {
+        "Masculino": "M",
+        "Femenino": "F"
+    }
+    sexo_gli = sexo_map.get(sexo, None)
+
     for name, row in rows_data.items():
 
         pred = row.get("pred")
         lln = row.get("lln")
 
-        # 🔥 MAPEO CORRECTO PARA GLI
         gli_name = name
         if name == "FEV1/FVC":
             gli_name = "FEV1FVC"
 
         try:
-            gli = get_gli_reference(gli_name, edad, talla, sexo, etnia)
+            gli = get_gli_reference(gli_name, edad, talla_m, sexo_gli, etnia)
 
-            if gli:
+            if gli and lln is None:
 
-                # 🔥 FORZAR CÁLCULO DE LLN (NO DEPENDER DE GLI)
-                if lln is None and gli.get("pred") and gli.get("z") is not None:
-                    try:
-                        # 🔥 USAMOS Z-SCORE (MEJOR QUE SD)
-                        z = gli.get("z")
-                        pred_gli = gli.get("pred")
+                # 🔥 CASO 1: LLN directo
+                if gli.get("lln") is not None:
+                    lln = gli["lln"]
 
-                        # aproximación: LLN usando Z -1.64
-                        # asumimos distribución normal
-                        # si ya tienes z del paciente, mejor usar SD
-
-                        if gli.get("sd"):
-                            lln = pred_gli - (1.64 * gli["sd"])
-                        else:
-                            lln = None
-
-                    except:
-                        lln = None
+                # 🔥 CASO 2: CALCULAR LLN CON SD
+                elif gli.get("pred") and gli.get("sd"):
+                    lln = gli["pred"] - (1.64 * gli["sd"])
 
         except:
             pass
@@ -122,7 +119,6 @@ def calcular_predichos_lln(rows_data: dict, edad, sexo, talla, etnia):
         updated_row = row.copy()
         updated_row["pred"] = pred
 
-        # 🔥 SOLO PRINCIPALES
         if name in ["FVC", "FEV1", "FEV1/FVC"]:
             updated_row["lln"] = round(lln, 2) if isinstance(lln, (int, float)) else "N/A"
         else:
