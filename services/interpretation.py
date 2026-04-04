@@ -1,5 +1,3 @@
-# services/interpretation.py
-
 from typing import Dict, List, Optional, Tuple
 from services.spirometry_logic import ParameterResult
 
@@ -50,19 +48,15 @@ def clasificar_gold(fev1_pct):
 
 
 def clasificar_semaforo(pattern, severity):
-
     if pattern and "normal" in pattern.lower():
         return "🟢 NORMAL"
 
     if severity:
         sev = severity.lower()
-
         if "leve" in sev:
             return "🟡 ALTERACIÓN LEVE"
-
         if "moderado" in sev:
             return "🟡 ALTERACIÓN MODERADA"
-
         if "severo" in sev:
             return "🔴 ALTERACIÓN SEVERA"
 
@@ -81,39 +75,25 @@ def evaluar_calidad(calidad, reproducibilidad, cooperacion):
     return "Calidad adecuada según criterios ATS/ERS."
 
 
-def bronchodilator_response(
-    fev1: ParameterResult,
-    fvc: ParameterResult,
-    age_years: Optional[float]
-) -> Tuple[str, str]:
+def bronchodilator_response(fev1: ParameterResult, fvc: ParameterResult, age_years: Optional[float]) -> Tuple[str, str]:
 
     notes: List[str] = []
 
     def eval_param(param: ParameterResult, label: str):
-        delta_abs = param.delta_abs
-        delta_pct = param.delta_pct_baseline
+        if param.delta_abs is None or param.delta_pct_baseline is None:
+            return False
 
-        if delta_abs is None or delta_pct is None:
-            return False, delta_abs, delta_pct
+        delta_abs_ml = param.delta_abs * 1000 if param.unit.lower() == "l" else param.delta_abs
+        classic = param.delta_pct_baseline >= 12 and delta_abs_ml >= 200
+        pediatric = age_years is not None and age_years < 18 and param.delta_pct_baseline >= 12
 
-        delta_abs_ml = delta_abs * 1000 if param.unit.lower() == "l" else delta_abs
-        classic = delta_pct >= 12 and delta_abs_ml >= 200
-        pediatric_support = age_years is not None and age_years < 18 and delta_pct >= 12
+        if classic or pediatric:
+            notes.append(f"Respuesta significativa en {label}.")
+            return True
 
-        positive = classic or pediatric_support
+        return False
 
-        if positive:
-            if classic:
-                notes.append(f"Respuesta significativa en {label} (Δ {delta_pct:.1f}% y {delta_abs_ml:.0f} mL).")
-            else:
-                notes.append(f"Respuesta sugestiva en {label} para contexto pediátrico (Δ {delta_pct:.1f}%).")
-
-        return positive, delta_abs_ml, delta_pct
-
-    pos_fev1, _, _ = eval_param(fev1, "FEV1")
-    pos_fvc, _, _ = eval_param(fvc, "FVC")
-
-    if pos_fev1 or pos_fvc:
+    if eval_param(fev1, "FEV1") or eval_param(fvc, "FVC"):
         return "Significativa", " ".join(notes)
 
     return "No significativa", "Sin cambios relevantes tras administración de broncodilatador."
@@ -129,18 +109,17 @@ def build_interpretation(
     cooperacion=None
 ):
 
-    fev1 = params["FEV1"]
-    fvc = params["FVC"]
-    ratio = params["FEV1/FVC"]
+    fev1 = params.get("FEV1")
+    fvc = params.get("FVC")
+    ratio = params.get("FEV1/FVC")
     fef2575 = params.get("FEF25-75")
 
-    fev1_pct = fev1.pct_pred_pre
-
+    fev1_pct = fev1.pct_pred_pre if fev1 else None
     ratio_cutoff = lower_limit_ratio(age_years)
 
-    ratio_low = is_below_lln(ratio.measured_pre, ratio.lln, ratio_cutoff)
-    fvc_low = is_below_lln(fvc.measured_pre, fvc.lln) or ((fvc.pct_pred_pre or 999) < 80)
-    fev1_low = is_below_lln(fev1.measured_pre, fev1.lln) or ((fev1.pct_pred_pre or 999) < 80)
+    ratio_low = is_below_lln(ratio.measured_pre if ratio else None, ratio.lln if ratio else None, ratio_cutoff)
+    fvc_low = is_below_lln(fvc.measured_pre if fvc else None, fvc.lln if fvc else None) or ((fvc.pct_pred_pre or 999) < 80 if fvc else False)
+    fev1_low = is_below_lln(fev1.measured_pre if fev1 else None, fev1.lln if fev1 else None) or ((fev1.pct_pred_pre or 999) < 80 if fev1 else False)
 
     pattern = "Espirometría dentro de límites normales"
     severity = "No aplica"
@@ -151,94 +130,44 @@ def build_interpretation(
 
     if ratio_low and not fvc_low:
         pattern = "Patrón ventilatorio obstructivo"
-        severity = severity_from_percent(fev1.pct_pred_pre)
-        comments.append("Relación FEV1/FVC disminuida, compatible con obstrucción al flujo aéreo.")
+        severity = severity_from_percent(fev1_pct)
+        comments.append("Relación FEV1/FVC disminuida.")
 
     elif not ratio_low and fvc_low:
         pattern = "Patrón restrictivo probable"
-        severity = severity_from_percent(fvc.pct_pred_pre)
-        comments.append("FVC disminuida con relación FEV1/FVC conservada.")
+        severity = severity_from_percent(fvc.pct_pred_pre if fvc else None)
 
     elif ratio_low and fvc_low:
-        pattern = "Patrón ventilatorio mixto"
-        severity = severity_from_percent(
-            min(filter(lambda x: x is not None, [fev1.pct_pred_pre, fvc.pct_pred_pre]), default=None)
-        )
-        comments.append("Disminución simultánea de FEV1/FVC y FVC.")
+        pattern = "Patrón mixto"
+        severity = severity_from_percent(min([x for x in [fev1_pct, fvc.pct_pred_pre if fvc else None] if x is not None], default=None))
 
     else:
         comments.append("No se evidencian alteraciones ventilatorias significativas.")
 
-    # 🔥 FLUJOS MEDIOS SEGUROS (SIN ERRORES)
-try:
-    pct_fef = getattr(fef2575, "pct_pred_pre", None)
+    # 🔥 BLOQUE CORREGIDO (BIEN INDENTADO)
+    try:
+        pct_fef = getattr(fef2575, "pct_pred_pre", None)
 
-    if pct_fef is not None and pct_fef < 65:
-        comments.append(
-            "Disminución de flujos de vías aéreas pequeñas (FEF25-75 reducido), "
-            "hallazgo inespecífico que debe interpretarse con cautela y en contexto clínico."
-        )
-
-        # 🔥 SOLO SI TODO LO DEMÁS ES NORMAL
-        if not ratio_low and not fvc_low and not fev1_low:
+        if pct_fef is not None and pct_fef < 65:
             comments.append(
-                "Este hallazgo aislado no es suficiente para establecer diagnóstico de enfermedad obstructiva."
+                "Disminución de flujos de vías aéreas pequeñas (hallazgo inespecífico)."
             )
 
-except:
-    pass
+            if not ratio_low and not fvc_low and not fev1_low:
+                comments.append(
+                    "Hallazgo aislado sin valor diagnóstico independiente."
+                )
+    except:
+        pass
 
     broncho_status = "No realizado"
     broncho_note = "No se realizó prueba broncodilatadora."
 
-    if fev1.measured_post is not None or fvc.measured_post is not None:
+    if fev1 and fvc and (fev1.measured_post or fvc.measured_post):
         broncho_status, broncho_note = bronchodilator_response(fev1, fvc, age_years)
 
-    if ratio_low:
-        if fumador == "Fumador activo":
-            gold = clasificar_gold(fev1_pct)
-            if gold:
-                comments.append(
-                    f"Patrón obstructivo en contexto de tabaquismo, compatible con EPOC {gold} según severidad funcional."
-                )
-            else:
-                comments.append(
-                    "Patrón obstructivo en contexto de tabaquismo, considerar EPOC según clínica."
-                )
-
-        elif broncho_status == "Significativa":
-            comments.append(
-                "Obstrucción con respuesta broncodilatadora significativa, compatible con asma."
-            )
-
-    if fumador == "Fumador activo" and not ratio_low:
-        comments.append(
-            "Antecedente de tabaquismo, se recomienda seguimiento funcional periódico."
-        )
-
-    if fumador == "Exfumador":
-        comments.append(
-            "Antecedente de tabaquismo, considerar riesgo residual de enfermedad obstructiva."
-        )
-
-    technical_lines = [quality_text.strip()] if quality_text.strip() else []
-    technical_lines.append(pattern)
-
-    if severity != "No aplica":
-        technical_lines.append(f"Severidad funcional: {severity}.")
-
-    if broncho_status != "No realizado":
-        technical_lines.append(f"Respuesta broncodilatadora: {broncho_status.lower()}.")
-
-    if ratio_low and fumador == "Fumador activo":
-        gold = clasificar_gold(fev1_pct)
-        if gold:
-            technical_lines.append(f"Clasificación GOLD: {gold}.")
-
-    technical_report = " ".join(technical_lines)
+    technical_report = f"{quality_text}. {pattern}"
     medical_comment = " ".join(comments + [broncho_note])
-
-    semaforo = clasificar_semaforo(pattern, severity)
 
     return {
         "pattern": pattern,
@@ -247,5 +176,5 @@ except:
         "bronchodilator": broncho_status,
         "technical_report": technical_report,
         "medical_comment": medical_comment,
-        "semaforo": semaforo
+        "semaforo": clasificar_semaforo(pattern, severity)
     }
