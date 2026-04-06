@@ -144,8 +144,13 @@ def build_interpretation(
         pattern = "Patrón restrictivo probable"
         severity = severity_from_percent(fvc.pct_pred_pre if fvc else None)
 
-    elif ratio_low and fvc_low:
-        pattern = "Patrón mixto"
+elif ratio_low and fvc_low:
+    pattern = "Patrón ventilatorio obstructivo"
+
+    comments.append(
+        "FVC disminuida posiblemente secundaria a atrapamiento aéreo. "
+        "No se puede descartar restricción sin medición de volúmenes pulmonares."
+    )
         severity = severity_from_percent(min([x for x in [fev1_pct, fvc.pct_pred_pre if fvc else None] if x is not None], default=None))
 
     else:
