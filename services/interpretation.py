@@ -144,7 +144,7 @@ def build_interpretation(
         pattern = "Patrón restrictivo probable"
         severity = severity_from_percent(fvc.pct_pred_pre if fvc else None)
 
-elif ratio_low and fvc_low:
+    elif ratio_low and fvc_low:
     pattern = "Patrón ventilatorio obstructivo"
 
     comments.append(
