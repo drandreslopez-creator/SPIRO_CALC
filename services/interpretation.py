@@ -124,39 +124,60 @@ def build_interpretation(
     fev1_pct = fev1.pct_pred_pre if fev1 else None
     ratio_cutoff = lower_limit_ratio(age_years)
 
-    ratio_low = is_below_lln(ratio.measured_pre if ratio else None, ratio.lln if ratio else None, ratio_cutoff)
-    fvc_low = is_below_lln(fvc.measured_pre if fvc else None, fvc.lln if fvc else None) or ((fvc.pct_pred_pre or 999) < 80 if fvc else False)
-    fev1_low = is_below_lln(fev1.measured_pre if fev1 else None, fev1.lln if fev1 else None) or ((fev1.pct_pred_pre or 999) < 80 if fev1 else False)
+    ratio_low = is_below_lln(
+        ratio.measured_pre if ratio else None,
+        ratio.lln if ratio else None,
+        ratio_cutoff
+    )
+
+    fvc_low = is_below_lln(
+        fvc.measured_pre if fvc else None,
+        fvc.lln if fvc else None
+    ) or ((fvc.pct_pred_pre or 999) < 80 if fvc else False)
+
+    fev1_low = is_below_lln(
+        fev1.measured_pre if fev1 else None,
+        fev1.lln if fev1 else None
+    ) or ((fev1.pct_pred_pre or 999) < 80 if fev1 else False)
 
     pattern = "Espirometría dentro de límites normales"
     severity = "No aplica"
     comments = []
 
+    # ---------------- CALIDAD ----------------
     if calidad:
         comments.append(evaluar_calidad(calidad, reproducibilidad, cooperacion))
 
+    # ---------------- PATRONES ----------------
     if ratio_low and not fvc_low:
         pattern = "Patrón ventilatorio obstructivo"
         severity = severity_from_percent(fev1_pct)
         comments.append("Relación FEV1/FVC disminuida.")
 
+    elif ratio_low and fvc_low:
+        # 🔥 CORRECCIÓN CLAVE
+        pattern = "Patrón ventilatorio obstructivo"
+        severity = severity_from_percent(fev1_pct)
+
+        comments.append("Relación FEV1/FVC disminuida.")
+        comments.append(
+            "FVC disminuida posiblemente secundaria a atrapamiento aéreo. "
+            "No se puede descartar restricción sin medición de volúmenes pulmonares."
+        )
+
     elif not ratio_low and fvc_low:
         pattern = "Patrón restrictivo probable"
         severity = severity_from_percent(fvc.pct_pred_pre if fvc else None)
 
-    elif ratio_low and fvc_low:
-    pattern = "Patrón ventilatorio obstructivo"
-
-    comments.append(
-        "FVC disminuida posiblemente secundaria a atrapamiento aéreo. "
-        "No se puede descartar restricción sin medición de volúmenes pulmonares."
-    )
-        severity = severity_from_percent(min([x for x in [fev1_pct, fvc.pct_pred_pre if fvc else None] if x is not None], default=None))
+        comments.append("FVC disminuida con relación FEV1/FVC conservada.")
+        comments.append(
+            "Hallazgo sugestivo de restricción, requiere confirmación con volúmenes pulmonares."
+        )
 
     else:
         comments.append("No se evidencian alteraciones ventilatorias significativas.")
 
-        # 🔥 BLOQUE CORREGIDO (BIEN INDENTADO)
+    # ---------------- FEF25-75 ----------------
     try:
         pct_fef = getattr(fef2575, "pct_pred_pre", None)
 
@@ -172,16 +193,16 @@ def build_interpretation(
     except:
         pass
 
+    # ---------------- BRONCODILATADOR ----------------
     broncho_status = "No realizado"
     broncho_note = "No se realizó prueba broncodilatadora."
 
     if fev1 and fvc and (fev1.measured_post or fvc.measured_post):
         broncho_status, broncho_note = bronchodilator_response(fev1, fvc, age_years)
 
-    # 🔥 REPORTE TÉCNICO LIMPIO (BIEN INDENTADO)
+    # ---------------- TEXTO FINAL ----------------
     technical_report = f"{quality_text.rstrip('.')}. {broncho_note}"
 
-    # 🔥 COMENTARIO MÉDICO CORRECTO (ROBUSTO)
     medical_comment = " ".join(comments).strip().rstrip('.')
 
     if medical_comment:
