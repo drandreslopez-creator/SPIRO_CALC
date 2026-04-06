@@ -312,7 +312,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     # 🔥🔥🔥 AQUÍ EMPIEZAN LOS ÚNICOS CAMBIOS 🔥🔥🔥
 
-    story.append(Spacer(1, 20))
+    story.append(Spacer(1, 35))
 
     story.append(Paragraph(
         "<b>DR. ANDRÉS LÓPEZ RUIZ</b><br/>"
@@ -321,7 +321,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
         styles["XSmall"]
     ))
 
-    story.append(Spacer(1, 20))
+    story.append(Spacer(1, 25))
 
     story.append(Paragraph(
         "Device ID: PULMO70BEXPII100078",
