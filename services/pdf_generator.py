@@ -1,5 +1,6 @@
 from xml.sax.saxutils import escape
 from utils.calculations import fmt_num
+from services.study_guard import has_post_phase
 
 import io
 import numpy as np
@@ -237,7 +238,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
         ["Referencia (ecuación y versión)", Paragraph(escape(study.get("referencia", "No informada")), styles["XSmall"])],
         ["Procedencia confirmada", "Sí" if study.get("referencia_verificada") else "No"],
     ]
-    include_post = study.get("include_post", True)
+    include_post = has_post_phase(study.get("tipo_estudio"))
     if include_post:
         technical_rows.extend([
             ["Broncodilatador", study.get("broncodilatador","")],

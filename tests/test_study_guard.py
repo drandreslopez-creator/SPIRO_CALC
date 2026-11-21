@@ -60,7 +60,7 @@ class StudyGuardTest(unittest.TestCase):
         pdf = make_pdf(
             {"nombre": "Caso sintético"},
             {"tipo_estudio": SIMPLE_STUDY, "referencia": "GLI & Global | 2022",
-             "referencia_verificada": True, "include_post": False,
+             "referencia_verificada": True, "include_post": True,
              "broncodilatador": "Medicamento de prueba", "tiempo_post": "Prueba"},
             params, {"technical_report": "Calidad verificada.", "bronchodilator": "No aplica"},
             {},
