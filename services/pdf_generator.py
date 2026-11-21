@@ -269,7 +269,10 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     display_df = df.copy()
     for col in display_df.columns:
-        digits = 3 if col in ("LLN", "Z Pre", "Z Post") else 2
+        digits = {
+            "Pre": 4, "Predicho": 4, "LLN": 4, "Post": 4, "Δ Abs": 4,
+            "Z Pre": 3, "Z Post": 3, "%Pred Pre": 1, "%Pred Post": 1,
+        }.get(col, 2)
         display_df[col] = display_df[col].apply(lambda value: fmt(value, digits))
 
     table_data = [display_df.columns.tolist()] + display_df.values.tolist()

@@ -49,6 +49,13 @@ local; las pruebas de software no demuestran que un paciente concreto haya sido 
 - [ERS/ATS 2022: estrategias de interpretación](https://publications.ersnet.org/content/erj/60/1/2101499).
 - [GINA 2026: guía resumida](https://ginasthma.org/wp-content/uploads/2026/07/GINA-Summary-Guide-2026-WEB-WMS.pdf#page=8).
 
+## Ejemplos publicados para pruebas de software
+
+- **GLI 2012, suplemento §4.3.4:** FEV1 medido 2.210 L; predicho 2.7800 L; LLN 2.1741 L; Z −1.55. El FEV1 está por encima de su LLN, aunque equivale a 79.5% del predicho. Este ejemplo solo verifica ese parámetro; no clasifica un estudio completo ni selecciona la ecuación del espirómetro de consulta. [Suplemento GLI 2012](https://publications.ersnet.org/content/erj/suppl/2013/04/19/09031936.00080312.DC1/Supplement_GLI_2012_predicted_values-2.pdf).
+- **ERS/ATS, recuadro 1:** con FEV1 pre 2.00 L, post 2.40 L y predicho 3.32 L, el cálculo a partir de los números publicados es +12.04819…% del predicho (+12.05% a dos decimales). El recuadro imprime 12.1%; ambos resultados superan 10%. Se prueba la fórmula con los datos mostrados y la clasificación usa el valor sin redondear. [Estándar ERS/ATS 2022](https://doi.org/10.1183/13993003.01499-2021).
+
+Estas pruebas verifican cálculos y transferencia de valores del software. No reemplazan el cotejo con el equipo ni la validación del uso asistencial.
+
 ## Trazabilidad de pruebas
 
 | Riesgo | Control | Verificación |

@@ -46,6 +46,14 @@ def bronchodilator_response(fev1, fvc, age_years, quality_ok):
         status = "No cumple el criterio (ERS/ATS)"
         detail = "Ni FEV1 ni FVC aumentaron >10% de su valor predicho."
 
+    displayed_changes = [
+        f"{name} {float(change * 100):+.2f}%" for name, change in changes.items()
+        if change is not None
+    ]
+    if displayed_changes:
+        detail += (" Cambio respecto al predicho: " + "; ".join(displayed_changes)
+                   + ". Se muestran valores redondeados; el criterio usa los valores sin redondear.")
+
     if isinstance(age_years, (int, float)) and 6 <= age_years < 18:
         change = changes["FEV1"]
         if change is None:

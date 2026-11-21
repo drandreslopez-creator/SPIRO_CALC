@@ -179,8 +179,8 @@ with st.form("spirometry_form"):
 
         cols[0].markdown(f"{name} ({unit})")
 
-        measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.01)
-        predicted = cols[2].number_input(f"{name}_pred", label_visibility="collapsed", value=None, step=0.01)
+        measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.0001, format="%.4f")
+        predicted = cols[2].number_input(f"{name}_pred", label_visibility="collapsed", value=None, step=0.0001, format="%.4f")
 
         pct_auto = None
         if measured_pre is not None and predicted not in (None, 0):
@@ -188,11 +188,11 @@ with st.form("spirometry_form"):
 
         cols[3].markdown(f"{fmt_num(pct_auto, 1)}")
 
-        lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.001, format="%.3f")
+        lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.0001, format="%.4f")
 
         zpre = cols[5].number_input(f"{name}_zpre", label_visibility="collapsed", value=None, step=0.01, format="%.3f")
 
-        post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
+        post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.0001, format="%.4f")
 
         zpost = cols[7].number_input(f"{name}_zpost", label_visibility="collapsed", value=None, step=0.01, format="%.3f")
 
@@ -333,7 +333,19 @@ else:
         st.write(interpretation["medical_comment"])
     df = build_values_dataframe(params, include_post=include_post)
     with tab3:
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(
+            df, use_container_width=True,
+            column_config={
+                label: st.column_config.NumberColumn(format=fmt)
+                for label, fmt in {
+                    "Pre": "%.4f", "Predicho": "%.4f", "LLN": "%.4f",
+                    "Post": "%.4f", "Δ Abs": "%.4f",
+                    "Z Pre": "%.3f", "Z Post": "%.3f",
+                    "%Pred Pre": "%.1f", "%Pred Post": "%.1f",
+                }.items()
+                if label in df.columns
+            },
+        )
         st.image(build_summary_chart(params, include_post=include_post),
                  caption="Resumen gráfico de % del predicho", use_container_width=True)
 
