@@ -1,29 +1,21 @@
 from __future__ import annotations
 
 # Módulos propios
-from utils.calculations import *
+from utils.calculations import fmt_num, safe_float
 from services.interpretation import build_interpretation
-from services.spirometry_logic import ParameterResult  # 🔥 AQUÍ
+from services.study_guard import (
+    SIMPLE_STUDY, POST_STUDY, has_post_phase, conflicting_study_dates,
+    reference_provenance, scoped_rows,
+)
+from services.spirometry_logic import parameters_from_entered_values
 from services.pdf_generator import make_pdf, build_values_dataframe, build_summary_chart
 
-# 🔥 NUEVO (Google Sheets)
-from services.google_sheets_db import (
-    save_patient,
-    save_spirometry,
-    get_all_patients,
-    get_patient_reports
-)
+from services.report_review import (MAX_CLINICAL_COMMENT, reviewed_interpretation,
+                                    suggest_clinical_comment)
 
-# Librerías necesarias
-import tempfile
-import zipfile
-from utils.gli import get_gli_reference
-from dataclasses import dataclass
-from datetime import date, datetime
-from zoneinfo import ZoneInfo
+from datetime import date
 from pathlib import Path
-from pypdf import PdfReader, PdfWriter
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional
 
 import streamlit as st
 
@@ -40,17 +32,16 @@ st.set_page_config(
 # ----------------------------
 # Utility helpers
 # ----------------------------
-def age_in_years(dob: Optional[date]) -> Optional[float]:
-    if not dob:
+def age_in_years(dob: Optional[date], study_date: Optional[date]) -> Optional[int]:
+    if not dob or not study_date or dob > study_date:
         return None
-    today = date.today()
-    return round((today - dob).days / 365.25, 2)
+    return study_date.year - dob.year - ((study_date.month, study_date.day) < (dob.month, dob.day))
 
 
-def age_text(dob: Optional[date]) -> str:
-    if not dob:
+def age_text(dob: Optional[date], study_date: Optional[date]) -> str:
+    if not dob or not study_date or dob > study_date:
         return ""
-    today = date.today()
+    today = study_date
     years = today.year - dob.year
     months = today.month - dob.month
     if today.day < dob.day:
@@ -65,67 +56,6 @@ def age_text(dob: Optional[date]) -> str:
         parts.append(f"{months} mes{'es' if months != 1 else ''}")
     return " y ".join(parts)
 
-
-def ensure_session_defaults() -> None:
-    defaults = {
-        "include_post": False,
-        "show_preview": True,
-    }
-    for key, value in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
-
-# ----------------------------
-# Función para calcular predichos y LLN
-# ----------------------------
-def calcular_predichos_lln(rows_data: dict, edad, sexo, talla, etnia):
-
-    rows_updated = {}
-
-    for name, row in rows_data.items():
-
-        pred = row.get("pred")
-        lln = row.get("lln")
-        measured = row.get("pre")
-
-        # 🔥 CALCULAR LLN USANDO Z-SCORE (MÁS ROBUSTO)
-        try:
-            if pred and measured:
-
-                # calculamos z del paciente
-                z = calculate_zscore(measured, pred, name)
-
-                # si hay z válido → reconstruimos SD
-                if z is not None and z != 0:
-                    sd = (measured - pred) / z
-
-                    # LLN corresponde a z = -1.64
-                    lln_calc = pred + (-1.64 * sd)
-
-                    if isinstance(lln_calc, (int, float)):
-                        lln = lln_calc
-
-        except:
-            pass
-
-        updated_row = row.copy()
-        updated_row["pred"] = pred
-
-        # 🔥 SOLO PRINCIPALES
-        if name in ["FVC", "FEV1", "FEV1/FVC"]:
-            updated_row["lln"] = round(lln, 2) if isinstance(lln, (int, float)) else "N/A"
-        else:
-            updated_row["lln"] = "N/A"
-
-        rows_updated[name] = updated_row
-
-    return rows_updated
-
-
-# ----------------------------
-# Sidebar / static content
-# ----------------------------
-ensure_session_defaults()
 
 with st.sidebar:
     if LOGO_PATH.exists():
@@ -142,6 +72,7 @@ with st.sidebar:
     )
 
 st.title("🫁 Reporte profesional de espirometría")
+st.warning("Versión de prueba. Usa solo datos ficticios; no emitas informes clínicos con esta versión.")
 st.write("Ingrese los datos del paciente, los parámetros espirométricos y los anexos opcionales del equipo.")
 
 
@@ -197,17 +128,33 @@ with st.form("spirometry_form"):
     diagnostico = d2.text_area("IDx", placeholder="Ej. Asma persistente, rinitis y tos de esfuerzo")
 
     d3, d4, d5, d6 = st.columns(4)
-    tipo_estudio = d3.selectbox("Tipo de estudio", ["Espirometría simple", "Espirometría pre y post broncodilatador"])
-    calidad = d4.selectbox("Calidad / aceptabilidad", ["Aceptable", "Aceptable con limitaciones", "No aceptable"])
-    reproducibilidad = d5.selectbox("Reproducibilidad", ["Adecuada", "Parcial", "No adecuada"])
-    cooperacion = d6.selectbox("Cooperación del paciente", ["Buena", "Regular", "Limitada"])
+    tipo_estudio = d3.selectbox("Tipo de estudio", [SIMPLE_STUDY, POST_STUDY])
+    calidad = d4.selectbox("Calidad / aceptabilidad", ["Sin verificar", "Aceptable", "Aceptable con limitaciones", "No aceptable"])
+    reproducibilidad = d5.selectbox("Reproducibilidad", ["Sin verificar", "Adecuada", "Parcial", "No adecuada"])
+    cooperacion = d6.selectbox("Cooperación del paciente", ["Sin verificar", "Buena", "Regular", "Limitada"])
 
     d7, d8 = st.columns(2)
-    broncodilatador = d7.text_input("Broncodilatador", value="Salbutamol" if tipo_estudio == "Espirometría pre y post broncodilatador" else "")
-    tiempo_post = d8.text_input("Tiempo post-BD", value="15 minutos" if tipo_estudio == "Espirometría pre y post broncodilatador" else "")
+    broncodilatador = d7.text_input("Broncodilatador", value="Salbutamol" if has_post_phase(tipo_estudio) else "")
+    tiempo_post = d8.text_input("Tiempo post-BD", value="15 minutos" if has_post_phase(tipo_estudio) else "")
+
+    ref1, ref2 = st.columns(2)
+    ecuacion_referencia = ref1.text_input(
+        "Ecuación o familia de referencia", max_chars=60, placeholder="Ej.: GLI",
+        help="Transcriba la ecuación del informe validado del equipo; no la infiera.",
+    )
+    version_referencia = ref2.text_input(
+        "Versión o año de la ecuación", max_chars=30, placeholder="Ej.: 2012",
+        help="Use la identificación que aparece en el informe del equipo.",
+    )
+    referencia_verificada = st.checkbox("Confirmo que los valores de referencia ingresados provienen de un informe validado, con las mismas unidades.")
+    calidad_post_confirmada = st.checkbox("Confirmo la calidad y reproducibilidad de las maniobras posbroncodilatador (si aplica).")
+
+    identificador_equipo = st.text_input("Identificación del espirómetro (opcional)",
+                                        placeholder="Modelo o código de inventario del equipo realmente usado",
+                                        max_chars=100)
 
     st.subheader("Valores espirométricos")
-    st.caption("Ingrese medición basal, predicho, LLN y Z-score si los tiene disponibles. Los campos post son opcionales.")
+    st.caption("Transcriba predicho, límite inferior de normalidad (LLN) y Z del informe validado del equipo. No se estiman valores faltantes. Ingrese la relación FEV1/FVC y su LLN como porcentajes (ej.: 78, no 0.78).")
 
     param_config = [
         ("FVC", "L"),
@@ -232,8 +179,8 @@ with st.form("spirometry_form"):
 
         cols[0].markdown(f"{name} ({unit})")
 
-        measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.01)
-        predicted = cols[2].number_input(f"{name}_pred", label_visibility="collapsed", value=None, step=0.01)
+        measured_pre = cols[1].number_input(f"{name}_pre", label_visibility="collapsed", value=None, step=0.0001, format="%.4f")
+        predicted = cols[2].number_input(f"{name}_pred", label_visibility="collapsed", value=None, step=0.0001, format="%.4f")
 
         pct_auto = None
         if measured_pre is not None and predicted not in (None, 0):
@@ -241,59 +188,59 @@ with st.form("spirometry_form"):
 
         cols[3].markdown(f"{fmt_num(pct_auto, 1)}")
 
-        lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.01)
+        lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.0001, format="%.4f")
 
-        cols[5].markdown("Auto")
+        zpre = cols[5].number_input(f"{name}_zpre", label_visibility="collapsed", value=None, step=0.01, format="%.3f")
 
-        post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
+        post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.0001, format="%.4f")
 
-        cols[7].markdown("Auto")
+        zpost = cols[7].number_input(f"{name}_zpost", label_visibility="collapsed", value=None, step=0.01, format="%.3f")
 
         rows_data[name] = {
             "unit": unit,
             "pre": safe_float(measured_pre),
             "pred": safe_float(predicted),
             "lln": safe_float(lln),
-            "zpre": None,
+            "zpre": safe_float(zpre),
             "post": safe_float(post),
-            "zpost": None,
+            "zpost": safe_float(zpost),
         }
 
+    st.caption("Para un estudio simple, se omiten las mediciones y confirmaciones posbroncodilatador.")
     st.subheader("Anexos del estudio")
     a1, a2, a3 = st.columns(3)
     curve_pdf = a1.file_uploader("PDF exportado del equipo (opcional)", type=["pdf"])
     curve_image_1 = a2.file_uploader("Imagen curva flujo-volumen (opcional)", type=["png", "jpg", "jpeg"])
     curve_image_2 = a3.file_uploader("Imagen curva volumen-tiempo (opcional)", type=["png", "jpg", "jpeg"])
 
-    st.subheader("Comentario adicional")
-    nota_medica_manual = st.text_area(
-        "Comentario complementario del médico (opcional)",
-        placeholder="Este texto se agregará al comentario médico automático si lo deseas.",
+    anexos_solo_basales = st.checkbox(
+        "Para un estudio simple, confirmo que los anexos contienen solo información basal."
     )
 
-    submitted = st.form_submit_button("Generar reporte e interpretación", use_container_width=True)
+    submitted = st.form_submit_button("Preparar borrador para revisión", use_container_width=True)
 
 if submitted:
-    edad_num = age_in_years(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else None
-    edad_txt = age_text(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else ""
+    # Every attempt (including an invalid one) invalidates the previous export.
+    st.session_state.pop("report_snapshot", None)
+    st.session_state.pop("report_export", None)
+    st.session_state.pop("edited_conclusion", None)
+    st.session_state["report_revision"] = st.session_state.get("report_revision", 0) + 1
+    if conflicting_study_dates(fecha_nacimiento, fecha_estudio):
+        st.error("La fecha de nacimiento es posterior a la fecha del estudio. Corrige las fechas antes de generar o guardar el informe.")
+        st.stop()
 
-    rows_data = calcular_predichos_lln(rows_data, edad_num, sexo, talla, etnia)
+    include_post = has_post_phase(tipo_estudio)
+    provenance = reference_provenance(ecuacion_referencia, version_referencia)
+    if not provenance:
+        st.warning("Indica la ecuación y su versión o año para habilitar la interpretación automática. El informe puede mostrar los datos sin clasificarlos.")
+    if not include_post and (calidad_post_confirmada or broncodilatador or tiempo_post
+                             or any(row.get("post") is not None or row.get("zpost") is not None
+                                    for row in rows_data.values())):
+        st.warning("El estudio es simple: se omitieron los datos posbroncodilatador ingresados.")
+    edad_num = age_in_years(fecha_nacimiento, fecha_estudio) if isinstance(fecha_nacimiento, date) else None
+    edad_txt = age_text(fecha_nacimiento, fecha_estudio) if isinstance(fecha_nacimiento, date) else ""
 
-    params = {}
-    for name, row in rows_data.items():
-        z_pre_auto = calculate_zscore(row["pre"], row["pred"], name)
-        z_post_auto = calculate_zscore(row["post"], row["pred"], name)
-
-        params[name] = ParameterResult(
-            name=name,
-            unit=row["unit"],
-            measured_pre=row["pre"],
-            measured_post=row["post"],
-            predicted=row["pred"],
-            lln=row["lln"],
-            zscore_pre=z_pre_auto,
-            zscore_post=z_post_auto,
-        )
+    params = parameters_from_entered_values(scoped_rows(rows_data, include_post))
 
     quality_text = f"Calidad {calidad.lower()}, reproducibilidad {reproducibilidad.lower()} y cooperación {cooperacion.lower()}."
 
@@ -304,30 +251,15 @@ if submitted:
         fumador=fumador,
         calidad=calidad,
         reproducibilidad=reproducibilidad,
-        cooperacion=cooperacion
+        cooperacion=cooperacion,
+        referencia_verificada=referencia_verificada and provenance is not None,
+        calidad_post_confirmada=include_post and calidad_post_confirmada,
     )
 
-    # 🔥 GUARDAR EN GOOGLE SHEETS (AHORA BIEN INDENTADO)
-    try:
-        patient_id = save_patient(
-            nombre,
-            identificacion,
-            fecha_nacimiento.strftime("%Y-%m-%d") if fecha_nacimiento else "",
-            sexo
-        )
+    if not include_post:
+        interpretation["bronchodilator"] = "No aplica (estudio simple)"
+        interpretation["technical_report"] = quality_text
 
-        save_spirometry(patient_id, interpretation)
-
-        st.success("✅ Datos guardados en Google Sheets")
-
-    except Exception as e:
-        st.error(f"❌ Error guardando en Google Sheets: {e}")
-
-    # 🔥 COMENTARIO MANUAL
-    if nota_medica_manual.strip():
-        interpretation["medical_comment"] += " " + nota_medica_manual.strip()
-
-    # ---------------- DATOS ----------------
     patient_dict = {
         "nombre": nombre,
         "identificacion": f"{id_tipo} {identificacion}".strip(),
@@ -350,9 +282,17 @@ if submitted:
         "calidad": calidad,
         "reproducibilidad": reproducibilidad,
         "cooperacion": cooperacion,
-        "broncodilatador": broncodilatador,
-        "tiempo_post": tiempo_post,
+        "referencia": provenance or "No informada",
+        "referencia_verificada": bool(referencia_verificada and provenance is not None),
+        "include_post": include_post,
+        "identificador_equipo": identificador_equipo.strip(),
+        "broncodilatador": broncodilatador if include_post else "",
+        "tiempo_post": tiempo_post if include_post else "",
     }
+
+    if not include_post and not anexos_solo_basales and (curve_pdf or curve_image_1 or curve_image_2):
+        st.warning("Se omitieron los anexos del estudio simple porque no confirmaste que sean exclusivamente basales.")
+        curve_pdf = curve_image_1 = curve_image_2 = None
 
     attachments = {
         "curve_pdf": curve_pdf,
@@ -360,66 +300,89 @@ if submitted:
         "curve_image_2": curve_image_2,
     }
 
-    # ---------------- GENERAR ----------------
-    pdf_bytes = make_pdf(patient_dict, study_dict, params, interpretation, attachments)
-    csv_bytes = build_values_dataframe(params).to_csv(index=False).encode("utf-8-sig")
+    st.session_state["report_snapshot"] = (patient_dict, study_dict, params, interpretation, attachments)
 
-    st.success("Reporte generado correctamente.")
-
-    tab1, tab2, tab3 = st.tabs(["Reporte técnico", "Interpretación médica", "Datos tabulados"])
-
-    with tab1:
-        st.markdown("### Texto sugerido para el reporte")
-        st.write(interpretation["technical_report"])
-        st.write(f"**Resultado:** {interpretation['result']}")
-
-        if curve_image_1:
-            st.image(curve_image_1, caption="Curva flujo-volumen")
-        if curve_image_2:
-            st.image(curve_image_2, caption="Curva volumen-tiempo")
-
-    with tab2:
-        semaforo = interpretation.get("semaforo") or "⚠️ SIN CLASIFICAR"
-
-        if "🟢" in semaforo:
-            st.success(semaforo)
-        elif "🟡" in semaforo:
-            st.warning(semaforo)
-        elif "🔴" in semaforo:
-            st.error(semaforo)
-        else:
-            st.info(semaforo)
-
-        st.markdown("### Lectura médica orientativa")
-        st.write(f"**Patrón:** {interpretation['pattern']}")
-        st.write(f"**Severidad:** {interpretation['severity']}")
-        st.write(f"**Respuesta broncodilatadora:** {interpretation['bronchodilator']}")
-        st.write(interpretation["medical_comment"])
-
-    with tab3:
-        df = build_values_dataframe(params)
-        st.dataframe(df, use_container_width=True)
-
-    dl1, dl2 = st.columns(2)
-
-    dl1.download_button(
-        "Descargar PDF del reporte",
-        data=pdf_bytes,
-        file_name=f"espirometria_{nombre.replace(' ', '_') if nombre else 'paciente'}.pdf",
-        mime="application/pdf",
-        use_container_width=True,
-    )
-
-    dl2.download_button(
-        "Descargar tabla CSV",
-        data=csv_bytes,
-        file_name=f"espirometria_{nombre.replace(' ', '_') if nombre else 'paciente'}.csv",
-        mime="text/csv",
-        use_container_width=True,
-    )
-
-    chart_buffer = build_summary_chart(params)
-    st.image(chart_buffer, caption="Resumen gráfico de % del predicho", use_container_width=True)
-
+snapshot = st.session_state.get("report_snapshot")
+if snapshot is None:
+    st.info("Completa el formulario y pulsa «Preparar borrador para revisión».")
 else:
-    st.info("Completa el formulario y pulsa “Generar reporte e interpretación”.")
+    patient_dict, study_dict, params, interpretation, attachments = snapshot
+    include_post = study_dict["include_post"]
+    revision = st.session_state["report_revision"]
+    st.subheader("Revisión del borrador")
+    st.text(f"{patient_dict['nombre'] or 'Sin nombre'} | {patient_dict['identificacion']} | "
+            f"Estudio: {study_dict['fecha_estudio']}")
+    st.caption("Si cambias datos arriba, vuelve a preparar el borrador. Esta revisión corresponde "
+               "únicamente al estudio mostrado aquí.")
+    st.text(f"Referencia: {study_dict['referencia']} · "
+            f"{'Confirmada por el operador' if study_dict['referencia_verificada'] else 'No confirmada'}")
+
+    tab1, tab2, tab3 = st.tabs(["Reporte técnico", "Hallazgos calculados", "Datos tabulados"])
+    with tab1:
+        st.write(interpretation["technical_report"])
+        for key, caption in (("curve_image_1", "Curva flujo-volumen"),
+                             ("curve_image_2", "Curva volumen-tiempo")):
+            if attachments[key]:
+                st.image(attachments[key], caption=caption)
+        if attachments["curve_pdf"]:
+            st.text(f"PDF del equipo que se anexará: {attachments['curve_pdf'].name}")
+    with tab2:
+        st.write(f"**Patrón:** {interpretation['pattern']}")
+        if include_post:
+            st.write(f"**Respuesta broncodilatadora:** {interpretation['bronchodilator']}")
+        st.write(interpretation["medical_comment"])
+    df = build_values_dataframe(params, include_post=include_post)
+    with tab3:
+        st.dataframe(
+            df, use_container_width=True,
+            column_config={
+                label: st.column_config.NumberColumn(format=fmt)
+                for label, fmt in {
+                    "Pre": "%.4f", "Predicho": "%.4f", "LLN": "%.4f",
+                    "Post": "%.4f", "Δ Abs": "%.4f",
+                    "Z Pre": "%.3f", "Z Post": "%.3f",
+                    "%Pred Pre": "%.1f", "%Pred Post": "%.1f",
+                }.items()
+                if label in df.columns
+            },
+        )
+        st.image(build_summary_chart(params, include_post=include_post),
+                 caption="Resumen gráfico de % del predicho", use_container_width=True)
+
+    if "report_export" not in st.session_state:
+        with st.form(f"review_{revision}"):
+            clinical_comment = st.text_area(
+                "Conclusión clínica editable", value=st.session_state.get("edited_conclusion", suggest_clinical_comment(interpretation)),
+                max_chars=MAX_CLINICAL_COMMENT, key=f"conclusion_{revision}",
+                help="Borrador local, generado sin IA externa. Revisa y edita la conclusión.",
+            )
+            confirmed = st.checkbox(
+                "He revisado la identidad, los valores y anexos del estudio, y la conclusión.",
+                key=f"confirm_{revision}",
+            )
+            export_requested = st.form_submit_button("Confirmar revisión y preparar PDF de prueba")
+        if export_requested:
+            try:
+                reviewed = reviewed_interpretation(interpretation, clinical_comment, confirmed)
+                if not patient_dict["nombre"].strip():
+                    raise ValueError("Identifica al paciente de prueba antes de generar el PDF.")
+                pdf_bytes = make_pdf(patient_dict, study_dict, params, reviewed, attachments)
+                st.session_state["report_export"] = (pdf_bytes, reviewed["reviewed_clinical_comment"])
+                st.rerun()
+            except ValueError as exc:
+                st.error(str(exc))
+            except Exception:
+                st.error("No se pudo generar el PDF. Verifica los datos y los anexos y vuelve a intentarlo.")
+    else:
+        pdf_bytes, conclusion = st.session_state["report_export"]
+        st.success("PDF de prueba generado después de la revisión.")
+        st.text(conclusion)
+        if st.button("Volver a editar la conclusión"):
+            st.session_state["edited_conclusion"] = conclusion
+            del st.session_state["report_export"]
+            st.rerun()
+
+        st.download_button("Descargar PDF de prueba", data=pdf_bytes,
+                           file_name="espirometria_prueba.pdf", mime="application/pdf")
+        st.download_button("Descargar tabla CSV de prueba", data=df.to_csv(index=False).encode("utf-8-sig"),
+                           file_name="espirometria_prueba.csv", mime="text/csv")

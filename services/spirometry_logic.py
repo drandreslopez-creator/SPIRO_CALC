@@ -38,3 +38,11 @@ class ParameterResult:
         if self.measured_pre in (None, 0) or self.measured_post is None:
             return None
         return ((self.measured_post - self.measured_pre) / self.measured_pre) * 100
+
+def parameters_from_entered_values(rows):
+    """Keep the reference values reported by the validated source, without rounding."""
+    return {
+        name: ParameterResult(name, row["unit"], row["pre"], row["post"],
+                              row["pred"], row["lln"], row["zpre"], row["zpost"])
+        for name, row in rows.items()
+    }

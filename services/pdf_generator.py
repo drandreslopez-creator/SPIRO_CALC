@@ -1,4 +1,6 @@
+from xml.sax.saxutils import escape
 from utils.calculations import fmt_num
+from services.study_guard import has_post_phase
 
 import io
 import numpy as np
@@ -39,7 +41,7 @@ LOGO_PATH = APP_DIR / "logo.png"
 # ----------------------------
 # GRÁFICA
 # ----------------------------
-def build_summary_chart(params: Dict[str, Any]) -> io.BytesIO:
+def build_summary_chart(params: Dict[str, Any], include_post: bool = True) -> io.BytesIO:
     labels = ["FVC", "FEV1", "FEV1/FVC", "PEF", "FEF25-75"]
 
     pre = [params[k].pct_pred_pre if k in params else None for k in labels]
@@ -50,15 +52,14 @@ def build_summary_chart(params: Dict[str, Any]) -> io.BytesIO:
 
     fig, ax = plt.subplots(figsize=(8, 4))
 
-    pre_vals = [0 if v is None else v for v in pre]
-    post_vals = [0 if v is None else v for v in post]
+    pre_vals = [float("nan") if v is None else v for v in pre]
+    post_vals = [float("nan") if v is None else v for v in post]
 
     ax.bar(x - width/2, pre_vals, width, label="Pre")
 
-    if any(v is not None for v in post):
+    if include_post and any(v is not None for v in post):
         ax.bar(x + width/2, post_vals, width, label="Post")
 
-    ax.axhline(80, linestyle="--", linewidth=1)
     ax.set_ylabel("% del predicho")
     ax.set_title("Resumen espirométrico")
     ax.set_xticks(x)
@@ -78,11 +79,11 @@ def build_summary_chart(params: Dict[str, Any]) -> io.BytesIO:
 # ----------------------------
 # TABLA
 # ----------------------------
-def build_values_dataframe(params: Dict[str, Any]) -> pd.DataFrame:
+def build_values_dataframe(params: Dict[str, Any], include_post: bool = True) -> pd.DataFrame:
     rows = []
 
     for p in params.values():
-        rows.append({
+        row = {
             "Parámetro": p.name,
             "Unidad": p.unit,
             "Pre": p.measured_pre,
@@ -90,12 +91,16 @@ def build_values_dataframe(params: Dict[str, Any]) -> pd.DataFrame:
             "%Pred Pre": p.pct_pred_pre,
             "LLN": p.lln,
             "Z Pre": p.zscore_pre,
-            "Post": p.measured_post,
-            "%Pred Post": p.pct_pred_post,
-            "Z Post": p.zscore_post,
-            "Δ Abs": p.delta_abs,
-            "Δ %": p.delta_pct_baseline,
-        })
+        }
+        if include_post:
+            row.update({
+                "Post": p.measured_post,
+                "%Pred Post": p.pct_pred_post,
+                "Z Post": p.zscore_post,
+                "Δ Abs": p.delta_abs,
+                "Δ % basal": p.delta_pct_baseline,
+            })
+        rows.append(row)
 
     return pd.DataFrame(rows)
 
@@ -122,8 +127,7 @@ def render_image(uploaded_file, max_width_cm=10):
 
         return RLImage(buffer, width=rl_width, height=rl_height)
 
-    except Exception as e:
-        print("Error imagen:", e)
+    except Exception:
         return None
 
 
@@ -195,9 +199,10 @@ def make_pdf(patient, study, params, interpretation, attachments):
     story.append(Spacer(1, 10))
 
     story.append(Paragraph("REPORTE DE ESPIROMETRÍA", styles["XTitle"]))
+    story.append(Paragraph("<b>PRUEBA · NO USAR EN ATENCIÓN CLÍNICA</b>", styles["XSmall"]))
 
     now = datetime.now(ZoneInfo("America/Bogota"))
-    story.append(Paragraph(f"Fecha: {now.strftime('%d/%m/%Y %H:%M')}", styles["XSmall"]))
+    story.append(Paragraph(f"Emisión: {now.strftime('%d/%m/%Y %H:%M')}", styles["XSmall"]))
 
     # ---------------- PACIENTE ----------------
     story.append(Spacer(1, 6))
@@ -225,14 +230,21 @@ def make_pdf(patient, study, params, interpretation, attachments):
     story.append(Spacer(1, 6))
     story.append(Paragraph("2. Datos técnicos del estudio", styles["XSection"]))
 
-    t2 = Table([
+    technical_rows = [
         ["Tipo de estudio", study.get("tipo_estudio","")],
         ["Calidad", study.get("calidad","")],
         ["Reproducibilidad", study.get("reproducibilidad","")],
         ["Cooperación", study.get("cooperacion","")],
-        ["Broncodilatador", study.get("broncodilatador","")],
-        ["Tiempo post-BD", study.get("tiempo_post","")],
-    ], colWidths=[5*cm,13*cm])
+        ["Referencia (ecuación y versión)", Paragraph(escape(study.get("referencia", "No informada")), styles["XSmall"])],
+        ["Procedencia confirmada", "Sí" if study.get("referencia_verificada") else "No"],
+    ]
+    include_post = has_post_phase(study.get("tipo_estudio"))
+    if include_post:
+        technical_rows.extend([
+            ["Broncodilatador", study.get("broncodilatador","")],
+            ["Tiempo post-BD", study.get("tiempo_post","")],
+        ])
+    t2 = Table(technical_rows, colWidths=[5*cm,13*cm])
 
     t2.setStyle(TableStyle([
         ("GRID",(0,0),(-1,-1),0.3,colors.grey),
@@ -246,18 +258,22 @@ def make_pdf(patient, study, params, interpretation, attachments):
     story.append(Spacer(1, 6))
     story.append(Paragraph("3. Resultados espirométricos", styles["XSection"]))
 
-    df = build_values_dataframe(params)
+    df = build_values_dataframe(params, include_post=include_post)
 
-    def fmt(x):
+    def fmt(x, digits=2):
         if x is None or (isinstance(x, float) and pd.isna(x)):
             return "—"
         if isinstance(x, (int, float)):
-            return f"{x:.2f}"
+            return f"{x:.{digits}f}"
         return str(x)
 
     display_df = df.copy()
     for col in display_df.columns:
-        display_df[col] = display_df[col].apply(fmt)
+        digits = {
+            "Pre": 4, "Predicho": 4, "LLN": 4, "Post": 4, "Δ Abs": 4,
+            "Z Pre": 3, "Z Post": 3, "%Pred Pre": 1, "%Pred Post": 1,
+        }.get(col, 2)
+        display_df[col] = display_df[col].apply(lambda value: fmt(value, digits))
 
     table_data = [display_df.columns.tolist()] + display_df.values.tolist()
 
@@ -274,12 +290,18 @@ def make_pdf(patient, study, params, interpretation, attachments):
     story.append(Spacer(1, 6))
     story.append(Paragraph("4. Interpretación", styles["XSection"]))
 
-    t3 = Table([
-    ["Reporte técnico", Paragraph(interpretation.get("technical_report",""), styles["Justify"])],
-    ["Comentario médico", Paragraph(interpretation.get("medical_comment",""), styles["Justify"])],
-    ["Severidad", Paragraph(interpretation.get("severity",""), styles["XSmall"])],
-    ["Respuesta broncodilatadora", Paragraph(interpretation.get("bronchodilator",""), styles["XSmall"])],
-], colWidths=[5*cm,13*cm])
+    interpretation_rows = [
+        ["Reporte técnico", Paragraph(escape(interpretation.get("technical_report","")), styles["Justify"])],
+        ["Hallazgo orientativo", Paragraph(escape(interpretation.get("medical_comment","")), styles["Justify"])],
+        ["Severidad", Paragraph(escape(interpretation.get("severity","")), styles["XSmall"])],
+    ]
+    if interpretation.get("reviewed_clinical_comment"):
+        conclusion = escape(interpretation["reviewed_clinical_comment"]).replace("\n", "<br/>")
+        interpretation_rows.append(["Conclusión revisada", Paragraph(conclusion, styles["Justify"])])
+    if include_post:
+        interpretation_rows.append(["Respuesta broncodilatadora",
+                                    Paragraph(escape(interpretation.get("bronchodilator","")), styles["XSmall"])])
+    t3 = Table(interpretation_rows, colWidths=[5*cm,13*cm])
 
     t3.setStyle(TableStyle([
         ("GRID",(0,0),(-1,-1),0.3,colors.grey),
@@ -293,22 +315,24 @@ def make_pdf(patient, study, params, interpretation, attachments):
     story.append(PageBreak())
     story.append(Paragraph("5. Resumen gráfico", styles["XSection"]))
 
-    story.append(RLImage(build_summary_chart(params), width=14*cm, height=7*cm))
+    story.append(RLImage(build_summary_chart(params, include_post=include_post), width=14*cm, height=7*cm))
 
     # 🔥 IMÁGENES CORREGIDAS
     if attachments.get("curve_image_1"):
         story.append(Spacer(1, 10))
         story.append(Paragraph("Curva flujo-volumen", styles["XSmall"]))
         img1 = render_image(attachments["curve_image_1"], max_width_cm=7)
-        if img1:
-            story.append(img1)
+        if img1 is None:
+            raise ValueError("No se pudo leer el anexo flujo-volumen. Reemplázalo o retíralo.")
+        story.append(img1)
 
     if attachments.get("curve_image_2"):
         story.append(Spacer(1, 10))
         story.append(Paragraph("Curva volumen-tiempo", styles["XSmall"]))
         img2 = render_image(attachments["curve_image_2"], max_width_cm=7)
-        if img2:
-            story.append(img2)
+        if img2 is None:
+            raise ValueError("No se pudo leer el anexo volumen-tiempo. Reemplázalo o retíralo.")
+        story.append(img2)
 
     # 🔥🔥🔥 AQUÍ EMPIEZAN LOS ÚNICOS CAMBIOS 🔥🔥🔥
 
@@ -324,7 +348,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
     story.append(Spacer(1, 35))
 
     story.append(Paragraph(
-        "Device ID: PULMO70BEXPII100078",
+        "Espirómetro: " + escape(study.get("identificador_equipo") or "No informado"),
         styles["XSmall"]
     ))
 
@@ -358,8 +382,7 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
             return output_buffer.read()
 
-        except Exception as e:
-            print("Error uniendo PDFs:", e)
-            return pdf_bytes
+        except Exception as exc:
+            raise ValueError("No se pudo incorporar el PDF del equipo. Reemplázalo o retíralo.") from exc
 
     return pdf_bytes
