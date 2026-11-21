@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 # Módulos propios
-from utils.calculations import *
+from utils.calculations import fmt_num, safe_float
 from services.interpretation import build_interpretation
-from services.spirometry_logic import ParameterResult  # 🔥 AQUÍ
+from services.spirometry_logic import parameters_from_entered_values
 from services.pdf_generator import make_pdf, build_values_dataframe, build_summary_chart
 
 # 🔥 NUEVO (Google Sheets)
@@ -17,7 +17,6 @@ from services.google_sheets_db import (
 # Librerías necesarias
 import tempfile
 import zipfile
-from utils.gli import get_gli_reference
 from dataclasses import dataclass
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
@@ -40,17 +39,16 @@ st.set_page_config(
 # ----------------------------
 # Utility helpers
 # ----------------------------
-def age_in_years(dob: Optional[date]) -> Optional[float]:
-    if not dob:
+def age_in_years(dob: Optional[date], study_date: Optional[date]) -> Optional[int]:
+    if not dob or not study_date or dob > study_date:
         return None
-    today = date.today()
-    return round((today - dob).days / 365.25, 2)
+    return study_date.year - dob.year - ((study_date.month, study_date.day) < (dob.month, dob.day))
 
 
-def age_text(dob: Optional[date]) -> str:
-    if not dob:
+def age_text(dob: Optional[date], study_date: Optional[date]) -> str:
+    if not dob or not study_date or dob > study_date:
         return ""
-    today = date.today()
+    today = study_date
     years = today.year - dob.year
     months = today.month - dob.month
     if today.day < dob.day:
@@ -74,53 +72,6 @@ def ensure_session_defaults() -> None:
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
-
-# ----------------------------
-# Función para calcular predichos y LLN
-# ----------------------------
-def calcular_predichos_lln(rows_data: dict, edad, sexo, talla, etnia):
-
-    rows_updated = {}
-
-    for name, row in rows_data.items():
-
-        pred = row.get("pred")
-        lln = row.get("lln")
-        measured = row.get("pre")
-
-        # 🔥 CALCULAR LLN USANDO Z-SCORE (MÁS ROBUSTO)
-        try:
-            if pred and measured:
-
-                # calculamos z del paciente
-                z = calculate_zscore(measured, pred, name)
-
-                # si hay z válido → reconstruimos SD
-                if z is not None and z != 0:
-                    sd = (measured - pred) / z
-
-                    # LLN corresponde a z = -1.64
-                    lln_calc = pred + (-1.64 * sd)
-
-                    if isinstance(lln_calc, (int, float)):
-                        lln = lln_calc
-
-        except:
-            pass
-
-        updated_row = row.copy()
-        updated_row["pred"] = pred
-
-        # 🔥 SOLO PRINCIPALES
-        if name in ["FVC", "FEV1", "FEV1/FVC"]:
-            updated_row["lln"] = round(lln, 2) if isinstance(lln, (int, float)) else "N/A"
-        else:
-            updated_row["lln"] = "N/A"
-
-        rows_updated[name] = updated_row
-
-    return rows_updated
-
 
 # ----------------------------
 # Sidebar / static content
@@ -198,16 +149,19 @@ with st.form("spirometry_form"):
 
     d3, d4, d5, d6 = st.columns(4)
     tipo_estudio = d3.selectbox("Tipo de estudio", ["Espirometría simple", "Espirometría pre y post broncodilatador"])
-    calidad = d4.selectbox("Calidad / aceptabilidad", ["Aceptable", "Aceptable con limitaciones", "No aceptable"])
-    reproducibilidad = d5.selectbox("Reproducibilidad", ["Adecuada", "Parcial", "No adecuada"])
-    cooperacion = d6.selectbox("Cooperación del paciente", ["Buena", "Regular", "Limitada"])
+    calidad = d4.selectbox("Calidad / aceptabilidad", ["Sin verificar", "Aceptable", "Aceptable con limitaciones", "No aceptable"])
+    reproducibilidad = d5.selectbox("Reproducibilidad", ["Sin verificar", "Adecuada", "Parcial", "No adecuada"])
+    cooperacion = d6.selectbox("Cooperación del paciente", ["Sin verificar", "Buena", "Regular", "Limitada"])
 
     d7, d8 = st.columns(2)
     broncodilatador = d7.text_input("Broncodilatador", value="Salbutamol" if tipo_estudio == "Espirometría pre y post broncodilatador" else "")
     tiempo_post = d8.text_input("Tiempo post-BD", value="15 minutos" if tipo_estudio == "Espirometría pre y post broncodilatador" else "")
 
+    referencia_verificada = st.checkbox("Confirmo que los valores de referencia ingresados provienen de un informe validado, con las mismas unidades.")
+    calidad_post_confirmada = st.checkbox("Confirmo la calidad y reproducibilidad de las maniobras posbroncodilatador (si aplica).")
+
     st.subheader("Valores espirométricos")
-    st.caption("Ingrese medición basal, predicho, LLN y Z-score si los tiene disponibles. Los campos post son opcionales.")
+    st.caption("Transcriba predicho, límite inferior de normalidad (LLN) y Z del informe validado del equipo. No se estiman valores faltantes. Ingrese la relación FEV1/FVC y su LLN como porcentajes (ej.: 78, no 0.78).")
 
     param_config = [
         ("FVC", "L"),
@@ -241,22 +195,22 @@ with st.form("spirometry_form"):
 
         cols[3].markdown(f"{fmt_num(pct_auto, 1)}")
 
-        lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.01)
+        lln = cols[4].number_input(f"{name}_lln", label_visibility="collapsed", value=None, step=0.001, format="%.3f")
 
-        cols[5].markdown("Auto")
+        zpre = cols[5].number_input(f"{name}_zpre", label_visibility="collapsed", value=None, step=0.01, format="%.3f")
 
         post = cols[6].number_input(f"{name}_post", label_visibility="collapsed", value=None, step=0.01)
 
-        cols[7].markdown("Auto")
+        zpost = cols[7].number_input(f"{name}_zpost", label_visibility="collapsed", value=None, step=0.01, format="%.3f")
 
         rows_data[name] = {
             "unit": unit,
             "pre": safe_float(measured_pre),
             "pred": safe_float(predicted),
             "lln": safe_float(lln),
-            "zpre": None,
+            "zpre": safe_float(zpre),
             "post": safe_float(post),
-            "zpost": None,
+            "zpost": safe_float(zpost),
         }
 
     st.subheader("Anexos del estudio")
@@ -274,26 +228,10 @@ with st.form("spirometry_form"):
     submitted = st.form_submit_button("Generar reporte e interpretación", use_container_width=True)
 
 if submitted:
-    edad_num = age_in_years(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else None
-    edad_txt = age_text(fecha_nacimiento) if isinstance(fecha_nacimiento, date) else ""
+    edad_num = age_in_years(fecha_nacimiento, fecha_estudio) if isinstance(fecha_nacimiento, date) else None
+    edad_txt = age_text(fecha_nacimiento, fecha_estudio) if isinstance(fecha_nacimiento, date) else ""
 
-    rows_data = calcular_predichos_lln(rows_data, edad_num, sexo, talla, etnia)
-
-    params = {}
-    for name, row in rows_data.items():
-        z_pre_auto = calculate_zscore(row["pre"], row["pred"], name)
-        z_post_auto = calculate_zscore(row["post"], row["pred"], name)
-
-        params[name] = ParameterResult(
-            name=name,
-            unit=row["unit"],
-            measured_pre=row["pre"],
-            measured_post=row["post"],
-            predicted=row["pred"],
-            lln=row["lln"],
-            zscore_pre=z_pre_auto,
-            zscore_post=z_post_auto,
-        )
+    params = parameters_from_entered_values(rows_data)
 
     quality_text = f"Calidad {calidad.lower()}, reproducibilidad {reproducibilidad.lower()} y cooperación {cooperacion.lower()}."
 
@@ -304,7 +242,9 @@ if submitted:
         fumador=fumador,
         calidad=calidad,
         reproducibilidad=reproducibilidad,
-        cooperacion=cooperacion
+        cooperacion=cooperacion,
+        referencia_verificada=referencia_verificada,
+        calidad_post_confirmada=calidad_post_confirmada,
     )
 
     # 🔥 GUARDAR EN GOOGLE SHEETS (AHORA BIEN INDENTADO)
