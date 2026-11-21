@@ -1,3 +1,4 @@
+from xml.sax.saxutils import escape
 from utils.calculations import fmt_num
 
 import io
@@ -94,7 +95,7 @@ def build_values_dataframe(params: Dict[str, Any]) -> pd.DataFrame:
             "%Pred Post": p.pct_pred_post,
             "Z Post": p.zscore_post,
             "Δ Abs": p.delta_abs,
-            "Δ %": p.delta_pct_baseline,
+            "Δ % basal": p.delta_pct_baseline,
         })
 
     return pd.DataFrame(rows)
@@ -248,16 +249,17 @@ def make_pdf(patient, study, params, interpretation, attachments):
 
     df = build_values_dataframe(params)
 
-    def fmt(x):
+    def fmt(x, digits=2):
         if x is None or (isinstance(x, float) and pd.isna(x)):
             return "—"
         if isinstance(x, (int, float)):
-            return f"{x:.2f}"
+            return f"{x:.{digits}f}"
         return str(x)
 
     display_df = df.copy()
     for col in display_df.columns:
-        display_df[col] = display_df[col].apply(fmt)
+        digits = 3 if col in ("LLN", "Z Pre", "Z Post") else 2
+        display_df[col] = display_df[col].apply(lambda value: fmt(value, digits))
 
     table_data = [display_df.columns.tolist()] + display_df.values.tolist()
 
@@ -275,10 +277,10 @@ def make_pdf(patient, study, params, interpretation, attachments):
     story.append(Paragraph("4. Interpretación", styles["XSection"]))
 
     t3 = Table([
-    ["Reporte técnico", Paragraph(interpretation.get("technical_report",""), styles["Justify"])],
-    ["Comentario médico", Paragraph(interpretation.get("medical_comment",""), styles["Justify"])],
-    ["Severidad", Paragraph(interpretation.get("severity",""), styles["XSmall"])],
-    ["Respuesta broncodilatadora", Paragraph(interpretation.get("bronchodilator",""), styles["XSmall"])],
+    ["Reporte técnico", Paragraph(escape(interpretation.get("technical_report","")), styles["Justify"])],
+    ["Comentario médico", Paragraph(escape(interpretation.get("medical_comment","")), styles["Justify"])],
+    ["Severidad", Paragraph(escape(interpretation.get("severity","")), styles["XSmall"])],
+    ["Respuesta broncodilatadora", Paragraph(escape(interpretation.get("bronchodilator","")), styles["XSmall"])],
 ], colWidths=[5*cm,13*cm])
 
     t3.setStyle(TableStyle([
