@@ -51,15 +51,14 @@ def build_summary_chart(params: Dict[str, Any]) -> io.BytesIO:
 
     fig, ax = plt.subplots(figsize=(8, 4))
 
-    pre_vals = [0 if v is None else v for v in pre]
-    post_vals = [0 if v is None else v for v in post]
+    pre_vals = [float("nan") if v is None else v for v in pre]
+    post_vals = [float("nan") if v is None else v for v in post]
 
     ax.bar(x - width/2, pre_vals, width, label="Pre")
 
     if any(v is not None for v in post):
         ax.bar(x + width/2, post_vals, width, label="Post")
 
-    ax.axhline(80, linestyle="--", linewidth=1)
     ax.set_ylabel("% del predicho")
     ax.set_title("Resumen espirométrico")
     ax.set_xticks(x)
